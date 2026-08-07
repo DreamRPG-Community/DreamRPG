@@ -1,0 +1,15 @@
+.gradle/
+.idea/
+build/
+out/
+
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.tmp
+
+.classpath
+.project
+.settings/
+*.iml

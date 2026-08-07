@@ -1,0 +1,29 @@
+name: DreamRPG
+version: ${version}
+main: cn.mythicland.dreamrpg.DreamRpgPlugin
+load: POSTWORLD
+depend: [ Lib ]
+softdepend: [ PlaceholderAPI, Essentials, EssentialsSpawn, Vault, PlayerPoints, WorldManager, WorldRegion ]
+loadbefore: [ QuickShop ]
+description: Shared RPG foundation for the DreamRPG server.
+
+commands:
+  dreamrpg:
+    description: Manage DreamRPG.
+    aliases: [ drpg ]
+  spawn:
+    description: Teleport to the DreamRPG main-city spawn.
+  setspawn:
+    description: Set the DreamRPG main-city spawn.
+    permission: dreamrpg.admin
+  enderchest:
+    description: Open the DreamRPG custom ender chest.
+    aliases: [ ec ]
+
+permissions:
+  dreamrpg.admin:
+    description: Allows DreamRPG administration commands.
+    default: op
+  dreamrpg.chat.color:
+    description: Allows legacy colors in chat messages.
+    default: op

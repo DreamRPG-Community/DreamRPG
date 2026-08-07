@@ -1,0 +1,49 @@
+normal:
+  enabled: true
+  title-animation:
+    - '&2&l遗落梦境 [x40]'
+    - '&a&l遗&2&l落梦境 [x2]'
+    - '&f&l遗&a&l落&2&l梦境 [x2]'
+    - '&f&l遗落&a&l梦&2&l境 [x2]'
+    - '&f&l遗落梦&a&l境 [x2]'
+    - '&f&l遗落梦境 [x8]'
+    - '&2&l遗落梦境 [x6]'
+    - '&f&l遗落梦境 [x6]'
+    - '&2&l遗落梦境 [x40]'
+  title-update-ticks: 1
+  update-ticks: 2
+  time-zone: Asia/Shanghai
+  lines:
+    - '&7{time}'
+    - ''
+    - '&f版本: &ev1.0'
+    - ''
+    - '&f职业: &f{prefix}'
+    - '&f硬币: &6{coins}'
+    - '&f点券: &b{points}'
+    - ''
+    - '位置: &a{location}'
+    - ''
+    - '&emc.mythicland.cn'
+loading:
+  title-animation:
+    - '&2&l遗落梦境 [x40]'
+    - '&a&l遗&2&l落梦境 [x2]'
+    - '&f&l遗&a&l落&2&l梦境 [x2]'
+    - '&f&l遗落&a&l梦&2&l境 [x2]'
+    - '&f&l遗落梦&a&l境 [x2]'
+    - '&f&l遗落梦境 [x8]'
+    - '&2&l遗落梦境 [x6]'
+    - '&f&l遗落梦境 [x6]'
+    - '&2&l遗落梦境 [x40]'
+  lines:
+    - '&7{time}'
+    - ''
+    - '&f版本: &ev1.0'
+    - ''
+    - '&c正在加载您的玩家数据'
+    - '&c请稍后...'
+    - ''
+    - '位置: &a{location}'
+    - ''
+    - '&emc.mythicland.cn'

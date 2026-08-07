@@ -1,0 +1,29 @@
+libraries:
+  repository: "https://repo1.maven.org/maven2/"
+
+database:
+  mode: sqlite
+  sqlite:
+    file: "profiles.db"
+  mysql:
+    host: "127.0.0.1"
+    port: 3306
+    database: "dreamrpg"
+    username: "root"
+    password: ""
+    use-ssl: false
+    server-timezone: "Asia/Shanghai"
+
+spawn:
+  world: "world"
+  x: 0.5
+  y: 7.0
+  z: 2.5
+  yaw: 180
+  pitch: 0
+  teleport-on-join: true
+  teleport-on-respawn: true
+
+chat:
+  format: "{prefix}{name}&7: &f{message}"
+  color-permission: "dreamrpg.chat.color"
