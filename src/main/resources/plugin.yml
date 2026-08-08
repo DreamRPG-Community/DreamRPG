@@ -1,6 +1,7 @@
 name: DreamRPG
 version: ${version}
 main: cn.mythicland.dreamrpg.DreamRpgPlugin
+author: ShanguanLinG
 load: POSTWORLD
 depend: [ Lib ]
 softdepend: [ PlaceholderAPI, Essentials, EssentialsSpawn, Vault, PlayerPoints, WorldManager, WorldRegion ]
@@ -15,6 +16,9 @@ commands:
     description: Teleport to the DreamRPG main-city spawn.
   setspawn:
     description: Set the DreamRPG main-city spawn.
+    permission: dreamrpg.admin
+  gm:
+    description: Change the executing player's game mode.
     permission: dreamrpg.admin
   enderchest:
     description: Open the DreamRPG custom ender chest.

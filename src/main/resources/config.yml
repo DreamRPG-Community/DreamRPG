@@ -25,5 +25,11 @@ spawn:
   teleport-on-respawn: true
 
 chat:
-  format: "{prefix}{name}&7: &f{message}"
-  color-permission: "dreamrpg.chat.color"
+  format: '%luckperms_prefix% {prefix} {name}&7: &f{message}'
+  color-permission: dreamrpg.chat.color
+display:
+  tab:
+    header: [ ]
+    footer: [ ]
+    player-name-format: '{prefix} {name}        '
+  name-tag-format: '{prefix} {name}'

@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpg.config;
 
+import cn.mythicland.lib.text.TemplateRenderer;
 import cn.mythicland.lib.text.TextAnimation;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -8,7 +9,6 @@ import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /**
  * Immutable settings loaded from the standalone scoreboard.yml file.
@@ -17,8 +17,6 @@ public record ScoreboardSettings(
         NormalSettings normal,
         LoadingSettings loading
 ) {
-
-    private static final Pattern PLACEHOLDER_API_TOKEN = Pattern.compile("%[A-Za-z0-9_:-]+%");
 
     /**
      * Validates scoreboard settings.
@@ -90,10 +88,12 @@ public record ScoreboardSettings(
      * @return true when a percent-delimited token is configured
      */
     public boolean containsPlaceholderApiToken() {
-        return normal.lines().stream().anyMatch(line -> PLACEHOLDER_API_TOKEN.matcher(line).find())
-                || normal.titleAnimation().frames().stream().anyMatch(
-                frame -> PLACEHOLDER_API_TOKEN.matcher(frame.text()).find()
-        );
+        return normal.lines().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
+                || normal.titleAnimation().frames().stream()
+                .anyMatch(frame -> TemplateRenderer.containsPlaceholderApiToken(frame.text()))
+                || loading.lines().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
+                || loading.titleAnimation().frames().stream()
+                .anyMatch(frame -> TemplateRenderer.containsPlaceholderApiToken(frame.text()));
     }
 
     private static ConfigurationSection requiredSection(

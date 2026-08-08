@@ -1,9 +1,12 @@
 package cn.mythicland.dreamrpg.config;
 
+import cn.mythicland.lib.text.TemplateRenderer;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -14,7 +17,8 @@ public record DreamRpgSettings(
         URI libraryRepository,
         DatabaseSettings database,
         SpawnSettings spawn,
-        ChatSettings chat
+        ChatSettings chat,
+        DisplaySettings display
 ) {
 
     /**
@@ -25,6 +29,7 @@ public record DreamRpgSettings(
         database = Objects.requireNonNull(database, "database");
         spawn = Objects.requireNonNull(spawn, "spawn");
         chat = Objects.requireNonNull(chat, "chat");
+        display = Objects.requireNonNull(display, "display");
     }
 
     /**
@@ -51,7 +56,21 @@ public record DreamRpgSettings(
                 requiredString(configuration, "chat.format"),
                 requiredString(configuration, "chat.color-permission")
         );
-        return new DreamRpgSettings(libraryRepository, database, spawn, chat);
+        DisplaySettings display = DisplaySettings.load(configuration);
+        return new DreamRpgSettings(libraryRepository, database, spawn, chat, display);
+    }
+
+    /**
+     * Returns whether chat or player display configuration contains a PlaceholderAPI token.
+     *
+     * @return true when a configured chat, TAB, or name-tag template uses PlaceholderAPI
+     */
+    public boolean containsPlaceholderApiToken() {
+        return TemplateRenderer.containsPlaceholderApiToken(chat.format())
+                || display.tab().header().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
+                || display.tab().footer().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
+                || TemplateRenderer.containsPlaceholderApiToken(display.tab().playerNameFormat())
+                || TemplateRenderer.containsPlaceholderApiToken(display.nameTagFormat());
     }
 
     /**
@@ -254,6 +273,57 @@ public record DreamRpgSettings(
         }
     }
 
+    /** Player-facing TAB and name-tag presentation settings. */
+    public record DisplaySettings(TabSettings tab, String nameTagFormat) {
+
+        private static final String DEFAULT_PLAYER_NAME_FORMAT = "{prefix}{name}        ";
+        private static final String DEFAULT_NAME_TAG_FORMAT = "{prefix}{name}";
+
+        /**
+         * Validates display settings.
+         */
+        public DisplaySettings {
+            tab = Objects.requireNonNull(tab, "tab");
+            nameTagFormat = requireTemplate(nameTagFormat, "display.name-tag-format");
+            requireSingleNameSlot(nameTagFormat, "display.name-tag-format");
+        }
+
+        private static DisplaySettings load(FileConfiguration configuration) {
+            TabSettings tab = new TabSettings(
+                    optionalStringList(configuration, "display.tab.header", List.of()),
+                    optionalStringList(configuration, "display.tab.footer", List.of()),
+                    optionalTemplate(
+                            configuration,
+                            "display.tab.player-name-format",
+                            DEFAULT_PLAYER_NAME_FORMAT
+                    )
+            );
+            String configuredFormat = optionalTemplate(
+                    configuration,
+                    "display.name-tag-format",
+                    DEFAULT_NAME_TAG_FORMAT
+            );
+            return new DisplaySettings(tab, configuredFormat);
+        }
+    }
+
+    /** TAB header, footer, and individual player-name settings. */
+    public record TabSettings(
+            List<String> header,
+            List<String> footer,
+            String playerNameFormat
+    ) {
+
+        /**
+         * Validates and freezes TAB settings.
+         */
+        public TabSettings {
+            header = List.copyOf(Objects.requireNonNull(header, "header"));
+            footer = List.copyOf(Objects.requireNonNull(footer, "footer"));
+            playerNameFormat = requireTemplate(playerNameFormat, "display.tab.player-name-format");
+        }
+    }
+
     private static String requiredString(FileConfiguration configuration, String path) {
         Object rawValue = configuration.get(path);
         if (!(rawValue instanceof String value) || value.isBlank()) {
@@ -269,6 +339,49 @@ public record DreamRpgSettings(
             throw new IllegalStateException("Configuration requires a non-empty string: " + path);
         }
         return value.trim();
+    }
+
+    private static String optionalTemplate(FileConfiguration configuration, String path, String defaultValue) {
+        Object rawValue = configuration.get(path);
+        if (rawValue == null) return defaultValue;
+        if (!(rawValue instanceof String value)) {
+            throw new IllegalStateException("Configuration requires a string: " + path);
+        }
+        return requireTemplate(value, path);
+    }
+
+    private static List<String> optionalStringList(
+            FileConfiguration configuration,
+            String path,
+            List<String> defaultValue
+    ) {
+        Object rawValue = configuration.get(path);
+        if (rawValue == null) return List.copyOf(defaultValue);
+        if (!(rawValue instanceof List<?> values)) {
+            throw new IllegalStateException("Configuration requires a string list: " + path);
+        }
+        List<String> result = new ArrayList<>(values.size());
+        for (Object value : values) {
+            if (!(value instanceof String line)) {
+                throw new IllegalStateException("Configuration requires string list entries: " + path);
+            }
+            result.add(line);
+        }
+        return List.copyOf(result);
+    }
+
+    private static String requireTemplate(String value, String path) {
+        String template = Objects.requireNonNull(value, path);
+        if (template.isBlank()) throw new IllegalArgumentException(path + " cannot be blank");
+        return template;
+    }
+
+    private static void requireSingleNameSlot(String template, String path) {
+        String slot = "{name}";
+        int first = template.indexOf(slot);
+        if (first < 0 || first != template.lastIndexOf(slot)) {
+            throw new IllegalArgumentException(path + " must contain exactly one {name} placeholder");
+        }
     }
 
     private static String optionalPassword(FileConfiguration configuration, String path) {
@@ -298,6 +411,19 @@ public record DreamRpgSettings(
         if (rawValue == null) return defaultValue;
         if (!(rawValue instanceof Number value)) throw new IllegalStateException("Configuration requires a number: " + path);
         return value.intValue();
+    }
+
+    private static double optionalDouble(
+            FileConfiguration configuration,
+            String path,
+            double defaultValue
+    ) {
+        Object rawValue = configuration.get(path);
+        if (rawValue == null) return defaultValue;
+        if (!(rawValue instanceof Number value)) {
+            throw new IllegalStateException("Configuration requires a number: " + path);
+        }
+        return value.doubleValue();
     }
 
     private static double requiredDouble(FileConfiguration configuration, String path) {

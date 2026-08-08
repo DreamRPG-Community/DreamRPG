@@ -5,8 +5,11 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies strict configuration parsing and plugin-local path containment.
@@ -21,6 +24,13 @@ class DreamRpgSettingsTest {
         assertEquals(0.5D, settings.spawn().x());
         assertEquals(DreamRpgSettings.DatabaseMode.SQLITE, settings.database().mode());
         assertEquals("profiles.db", settings.database().sqlite().fileName());
+        assertEquals(List.of(), settings.display().tab().header());
+        assertEquals(List.of(), settings.display().tab().footer());
+        assertEquals(
+                "{prefix}{name}        ",
+                settings.display().tab().playerNameFormat()
+        );
+        assertEquals("{prefix}{name}", settings.display().nameTagFormat());
         assertEquals(
                 Path.of("C:/plugins/DreamRPG/profiles.db").toAbsolutePath().normalize(),
                 settings.databasePath(Path.of("C:/plugins/DreamRPG"))
@@ -71,6 +81,50 @@ class DreamRpgSettingsTest {
         assertEquals("mysql.example.test", settings.database().mysql().host());
         assertEquals("dreamrpg_live", settings.database().mysql().database());
         assertEquals("profiles.db", settings.database().sqlite().fileName());
+    }
+
+    @Test
+    void displayTemplatesPreserveConfiguredLinesAndTrailingSpaces() {
+        YamlConfiguration configuration = configuration();
+        configuration.set("display.tab.header", List.of("&aWelcome", "&f{name}"));
+        configuration.set("display.tab.footer", List.of("&7{world}"));
+        configuration.set("display.tab.player-name-format", "{prefix}{name} &8[{career_id}]");
+        configuration.set("display.name-tag-format", "&e{prefix}{name}&7 [{health}]");
+
+        DreamRpgSettings settings = DreamRpgSettings.load(configuration);
+
+        assertEquals(List.of("&aWelcome", "&f{name}"), settings.display().tab().header());
+        assertEquals(List.of("&7{world}"), settings.display().tab().footer());
+        assertEquals(
+                "{prefix}{name} &8[{career_id}]",
+                settings.display().tab().playerNameFormat()
+        );
+        assertEquals("&e{prefix}{name}&7 [{health}]", settings.display().nameTagFormat());
+    }
+
+    @Test
+    void nameTagFormatRequiresExactlyOneNamePlaceholder() {
+        YamlConfiguration configuration = configuration();
+        configuration.set("display.name-tag-format", "&7无名标签");
+
+        assertThrows(IllegalArgumentException.class, () -> DreamRpgSettings.load(configuration));
+
+        configuration.set("display.name-tag-format", "{name} {name}");
+
+        assertThrows(IllegalArgumentException.class, () -> DreamRpgSettings.load(configuration));
+    }
+
+    @Test
+    void chatAndDisplayTemplatesDetectPlaceholderApiTokens() {
+        YamlConfiguration configuration = configuration();
+        configuration.set("chat.format", "%luckperms_prefix%{prefix}{name}: {message}");
+        configuration.set("display.tab.header", List.of("%player_name%"));
+        configuration.set("display.tab.player-name-format", "%vault_eco_balance% {name}");
+        configuration.set("display.name-tag-format", "{name} &7[%player_ping%]");
+
+        DreamRpgSettings settings = DreamRpgSettings.load(configuration);
+
+        assertTrue(settings.containsPlaceholderApiToken());
     }
 
     @Test

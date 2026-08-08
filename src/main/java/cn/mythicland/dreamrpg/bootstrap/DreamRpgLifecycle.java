@@ -70,7 +70,7 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
     public void reload() {
         context.reload();
         profiles.reloadCatalog(context.careerCatalog());
-        display.reload(context.scoreboard());
+        display.reload(context.settings().display(), context.scoreboard());
         restartDisplayTasks();
         plugin.getLogger().info("DreamRPG configuration reloaded; runtime libraries remain unchanged.");
     }

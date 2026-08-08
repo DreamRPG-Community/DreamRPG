@@ -1,10 +1,9 @@
 package cn.mythicland.dreamrpg.display;
 
-import cn.mythicland.dreamrpg.api.CareerDefinition;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.PlayerProfile;
-import cn.mythicland.dreamrpg.api.PlayerPresentation;
 import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
+import cn.mythicland.dreamrpg.config.DreamRpgSettings;
 import cn.mythicland.dreamrpg.config.ScoreboardSettings;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.lib.api.LibApi;
@@ -12,12 +11,16 @@ import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.integration.PlayerPointsService;
 import cn.mythicland.lib.loading.PlayerLoadingGate;
 import cn.mythicland.lib.scoreboard.ScoreboardSession;
+import cn.mythicland.lib.text.LegacyText;
 import cn.mythicland.lib.text.TemplateRenderer;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.Team;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -26,11 +29,13 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -41,7 +46,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
 
     private static final DateTimeFormatter CLOCK_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
     private static final double HEALTH_DISPLAY_SCALE = 40.0D;
-
+    private static final String NAME_TAG_MARKER = "\u0002dreamrpg-name-tag\u0003";
     private final JavaPlugin plugin;
     private final LibApi lib;
     private final PlayerProfileService profiles;
@@ -51,7 +56,10 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     private final WorldLocationService locations;
     private final PlayerLoadingGate loadingGate;
     private final Map<UUID, ScoreboardSession> sessions = new HashMap<>();
+    private final Map<UUID, TabHeaderFooter> tabHeaderFooters = new HashMap<>();
+    private final Set<String> nameTagOverflowWarnings = new HashSet<>();
     private ScoreboardSettings settings;
+    private DreamRpgSettings.DisplaySettings displaySettings;
     private long animationTick;
 
     /**
@@ -62,6 +70,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
      * @param profiles profile service
      * @param coins DreamRPG authoritative coin service
      * @param locations world location service
+     * @param loadingGate profile-loading state service
      */
     public DreamRpgDisplayService(
             JavaPlugin plugin,
@@ -81,6 +90,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         this.locations = Objects.requireNonNull(locations, "locations");
         this.loadingGate = Objects.requireNonNull(loadingGate, "loadingGate");
         this.settings = initializedContext.scoreboard();
+        this.displaySettings = initializedContext.settings().display();
         this.animationTick = 0L;
     }
 
@@ -90,16 +100,18 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     public void refreshAll() {
         ensureMainThread();
         List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        Map<UUID, PlayerProfile> onlineProfiles = new LinkedHashMap<>();
         for (Player player : onlinePlayers) {
+            PlayerProfile profile = profiles.getProfile(player.getUniqueId());
+            onlineProfiles.put(player.getUniqueId(), profile);
             applyHealthDisplayScale(player);
-            applyPlayerName(player, profiles.getProfile(player.getUniqueId()));
+            applyPlayerName(player, profile);
         }
         if (!settings.normal().enabled()) {
             closeScoreboardSessions();
             return;
         }
-        Map<String, String> teamNames = buildTeamNames();
-        Map<String, List<String>> teamEntries = buildTeamEntries(onlinePlayers, teamNames);
+        Map<UUID, String> teamNames = buildTeamNames(onlinePlayers);
         for (Player viewer : onlinePlayers) {
             ScoreboardSession session = sessions.computeIfAbsent(
                     viewer.getUniqueId(),
@@ -118,17 +130,17 @@ public final class DreamRpgDisplayService implements AutoCloseable {
             session.setBelowName("dummy", "&c❤");
             session.setBelowNameScores(buildHealthScores(onlinePlayers));
             session.retainTeams(teamNames.values());
-            for (Map.Entry<String, List<String>> entry : teamEntries.entrySet()) {
-                String careerId = findCareerId(entry.getKey(), teamNames);
-                CareerDefinition career = profiles.findCareer(careerId)
-                        .orElseThrow(() -> new IllegalStateException(
-                                "Scoreboard career is missing: " + careerId
-                        ));
+            for (Player target : onlinePlayers) {
+                String teamName = teamNames.get(target.getUniqueId());
+                PlayerProfile profile = onlineProfiles.get(target.getUniqueId());
+                NameTagParts nameTag = renderNameTag(target, profile);
                 session.replaceTeam(
-                        entry.getKey(),
-                        career.prefix(),
-                        entry.getValue()
+                        teamName,
+                        nameTag.prefix(),
+                        nameTag.suffix(),
+                        List.of(target.getName())
                 );
+                session.setTeamNameTagVisibility(teamName, Team.OptionStatus.ALWAYS);
             }
             session.show(viewer);
         }
@@ -155,7 +167,22 @@ public final class DreamRpgDisplayService implements AutoCloseable {
      * @param refreshedSettings new scoreboard settings
      */
     public void reload(ScoreboardSettings refreshedSettings) {
-        settings = Objects.requireNonNull(refreshedSettings, "refreshedSettings");
+        reload(displaySettings, refreshedSettings);
+    }
+
+    /**
+     * Refreshes scoreboard and player presentation settings.
+     *
+     * @param refreshedDisplaySettings new TAB and name-tag settings
+     * @param refreshedScoreboardSettings new scoreboard settings
+     */
+    public void reload(
+            DreamRpgSettings.DisplaySettings refreshedDisplaySettings,
+            ScoreboardSettings refreshedScoreboardSettings
+    ) {
+        displaySettings = Objects.requireNonNull(refreshedDisplaySettings, "refreshedDisplaySettings");
+        settings = Objects.requireNonNull(refreshedScoreboardSettings, "refreshedScoreboardSettings");
+        nameTagOverflowWarnings.clear();
         animationTick = 0L;
         refreshAll();
     }
@@ -170,8 +197,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         Objects.requireNonNull(player, "player");
         ScoreboardSession session = sessions.remove(player.getUniqueId());
         if (session != null) session.close();
-        player.setDisplayName(player.getName());
-        player.setPlayerListName(player.getName());
+        clearPlayerPresentation(player);
         refreshAll();
     }
 
@@ -183,46 +209,20 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         ensureMainThread();
         for (Player player : new ArrayList<>(plugin.getServer().getOnlinePlayers())) {
             player.setHealthScaled(false);
-            player.setDisplayName(player.getName());
-            player.setPlayerListName(player.getName());
+            clearPlayerPresentation(player);
         }
+        tabHeaderFooters.clear();
         closeScoreboardSessions();
     }
 
-    private Map<String, String> buildTeamNames() {
-        Map<String, String> teamNames = new LinkedHashMap<>();
-        int index = 0;
-        for (CareerDefinition career : profiles.careers()) {
-            String teamName = "drpg" + Integer.toHexString(index++);
-            if (teamName.length() > 16) {
-                throw new IllegalStateException("Too many configured careers for scoreboard teams");
-            }
-            teamNames.put(career.id(), teamName);
+    private static Map<UUID, String> buildTeamNames(List<Player> onlinePlayers) {
+        Map<UUID, String> teamNames = new LinkedHashMap<>();
+        for (int index = 0; index < onlinePlayers.size(); index++) {
+            Player player = onlinePlayers.get(index);
+            String teamName = "drpg" + Integer.toHexString(index);
+            teamNames.put(player.getUniqueId(), teamName);
         }
         return teamNames;
-    }
-
-    private Map<String, List<String>> buildTeamEntries(
-            List<Player> onlinePlayers,
-            Map<String, String> teamNames
-    ) {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        for (Player player : onlinePlayers) {
-            PlayerProfile profile = profiles.getProfile(player.getUniqueId());
-            String teamName = teamNames.get(profile.careerId());
-            if (teamName == null) {
-                throw new IllegalStateException("Career has no scoreboard team: " + profile.careerId());
-            }
-            result.computeIfAbsent(teamName, ignored -> new ArrayList<>()).add(player.getName());
-        }
-        return result;
-    }
-
-    private static String findCareerId(String teamName, Map<String, String> teamNames) {
-        for (Map.Entry<String, String> entry : teamNames.entrySet()) {
-            if (entry.getValue().equals(teamName)) return entry.getKey();
-        }
-        throw new IllegalStateException("Cannot resolve DreamRPG scoreboard career: " + teamName);
     }
 
     private static Map<String, Integer> buildHealthScores(List<Player> onlinePlayers) {
@@ -264,10 +264,23 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     }
 
     private Map<String, Object> renderValues(Player viewer, String template) {
-        PlayerProfile profile = profiles.getProfile(viewer.getUniqueId());
+        return renderValues(
+                viewer,
+                profiles.getProfile(viewer.getUniqueId()),
+                template,
+                viewer.getName()
+        );
+    }
+
+    private Map<String, Object> renderValues(
+            Player viewer,
+            PlayerProfile profile,
+            String template,
+            String nameValue
+    ) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("player", viewer.getName());
-        values.put("name", viewer.getName());
+        values.put("name", nameValue);
         values.put("health", formatNumber(viewer.getHealth()));
         AttributeInstance maxHealth = viewer.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         if (maxHealth == null) throw new IllegalStateException("Player has no generic max-health attribute");
@@ -296,6 +309,93 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         return values;
     }
 
+    private String renderPlayerListName(Player player, PlayerProfile profile) {
+        String template = displaySettings.tab().playerNameFormat();
+        String coloredName = profile.career().nameColor() + player.getName();
+        return templates.render(
+                template,
+                player,
+                renderValues(player, profile, template, coloredName)
+        );
+    }
+
+    private NameTagParts renderNameTag(Player player, PlayerProfile profile) {
+        String template = displaySettings.nameTagFormat();
+        String markerName = profile.career().nameColor() + NAME_TAG_MARKER;
+        String rendered = templates.render(
+                template,
+                player,
+                renderValues(player, profile, template, markerName)
+        );
+        int markerIndex = rendered.indexOf(NAME_TAG_MARKER);
+        if (markerIndex < 0 || rendered.indexOf(NAME_TAG_MARKER, markerIndex + NAME_TAG_MARKER.length()) >= 0) {
+            throw new IllegalStateException(
+                    "DreamRPG name-tag format must render exactly one {name} placeholder"
+            );
+        }
+        return new NameTagParts(
+                normalizeNameTagPart(player, "prefix", rendered.substring(0, markerIndex)),
+                normalizeNameTagPart(
+                        player,
+                        "suffix",
+                        rendered.substring(markerIndex + NAME_TAG_MARKER.length())
+                )
+        );
+    }
+
+    private String normalizeNameTagPart(Player player, String partName, String value) {
+        if (value.length() <= 16) return value;
+        String warningKey = player.getUniqueId() + ":" + partName + ":" + displaySettings.nameTagFormat();
+        if (nameTagOverflowWarnings.add(warningKey)) {
+            plugin.getLogger().warning(
+                    "DreamRPG name-tag " + partName + " for " + player.getName()
+                            + " exceeds Paper 1.12.2's 16-character scoreboard limit; "
+                            + "the value will be truncated. Shorten display.name-tag-format "
+                            + "or its PlaceholderAPI prefix."
+            );
+        }
+        String truncated = value.substring(0, 16);
+        if (truncated.endsWith("\u00a7")) {
+            truncated = truncated.substring(0, truncated.length() - 1);
+        }
+        return truncated;
+    }
+
+    private void applyTabHeaderFooter(Player player, PlayerProfile profile) {
+        DreamRpgSettings.TabSettings tab = displaySettings.tab();
+        String header = normalizeTabText(renderTabLines(player, profile, tab.header()));
+        String footer = normalizeTabText(renderTabLines(player, profile, tab.footer()));
+        TabHeaderFooter next = new TabHeaderFooter(header, footer);
+        if (next.equals(tabHeaderFooters.get(player.getUniqueId()))) return;
+        if (!next.hasText() && !tabHeaderFooters.containsKey(player.getUniqueId())) {
+            tabHeaderFooters.put(player.getUniqueId(), next);
+            return;
+        }
+        player.setPlayerListHeaderFooter(
+                toComponents(header),
+                toComponents(footer)
+        );
+        tabHeaderFooters.put(player.getUniqueId(), next);
+    }
+
+    private String renderTabLines(Player player, PlayerProfile profile, List<String> lines) {
+        return String.join(
+                "\n",
+                lines.stream()
+                        .map(line -> templates.render(
+                                line,
+                                player,
+                                renderValues(
+                                        player,
+                                        profile,
+                                        line,
+                                        profile.career().nameColor() + player.getName()
+                                )
+                        ))
+                        .toList()
+        );
+    }
+
     private Map<String, Object> renderLoadingValues(Player viewer, String template) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("player", viewer.getName());
@@ -321,15 +421,29 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         return String.format(Locale.ROOT, "%.1f", value);
     }
 
-    private static void applyPlayerName(Player player, PlayerProfile profile) {
+    private void applyPlayerName(Player player, PlayerProfile profile) {
         String displayName = profile.career().nameColor() + player.getName();
         if (!displayName.equals(player.getDisplayName())) player.setDisplayName(displayName);
-        String playerListName =
-                profile.career().prefix()
-                        + profile.career().nameColor()
-                        + player.getName()
-                        + PlayerPresentation.TAB_NAME_SUFFIX;
+        String playerListName = renderPlayerListName(player, profile);
         if (!playerListName.equals(player.getPlayerListName())) player.setPlayerListName(playerListName);
+        applyTabHeaderFooter(player, profile);
+    }
+
+    private void clearPlayerPresentation(Player player) {
+        player.setDisplayName(player.getName());
+        player.setPlayerListName(player.getName());
+        TabHeaderFooter applied = tabHeaderFooters.remove(player.getUniqueId());
+        if (applied != null && applied.hasText()) {
+            player.setPlayerListHeaderFooter(toComponents(""), toComponents(""));
+        }
+    }
+
+    private static String normalizeTabText(String text) {
+        return LegacyText.stripColor(text).isBlank() ? "" : text;
+    }
+
+    private static BaseComponent[] toComponents(String text) {
+        return text.isEmpty() ? new BaseComponent[0] : TextComponent.fromLegacyText(text);
     }
 
     private static void applyHealthDisplayScale(Player player) {
@@ -344,5 +458,15 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     private void closeScoreboardSessions() {
         sessions.values().forEach(ScoreboardSession::close);
         sessions.clear();
+    }
+
+    private record NameTagParts(String prefix, String suffix) {
+    }
+
+    private record TabHeaderFooter(String header, String footer) {
+
+        private boolean hasText() {
+            return !header.isEmpty() || !footer.isEmpty();
+        }
     }
 }

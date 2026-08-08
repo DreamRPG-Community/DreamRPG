@@ -81,7 +81,7 @@ public final class DreamRpgContext implements AutoCloseable {
             DreamRpgSettings loadedSettings = DreamRpgSettings.load(configuration);
             ScoreboardSettings loadedScoreboard = ScoreboardSettings.load(scoreboardConfiguration);
             lib.containerAnimationService().verifyCompatibility();
-            validateIntegrations(loadedScoreboard);
+            validateIntegrations(loadedSettings, loadedScoreboard);
             CareerCatalog loadedCatalog = CareerCatalog.load(plugin);
             RuntimeLibraryManifest libraryManifest = RuntimeLibraryManifest.embedded();
             List<LibrarySpec> librariesToLoad = librariesFor(
@@ -129,7 +129,7 @@ public final class DreamRpgContext implements AutoCloseable {
             throw new IllegalStateException("Changing database.mode requires a full restart");
         }
         ScoreboardSettings refreshedScoreboard = ScoreboardSettings.load(scoreboardConfiguration);
-        validateIntegrations(refreshedScoreboard);
+        validateIntegrations(refreshedSettings, refreshedScoreboard);
         CareerCatalog refreshedCatalog = CareerCatalog.load(plugin);
         spawnService.reload(refreshedSettings.spawn());
         settings = refreshedSettings;
@@ -231,7 +231,8 @@ public final class DreamRpgContext implements AutoCloseable {
                 currentSettings.libraryRepository(),
                 currentSettings.database(),
                 refreshed,
-                currentSettings.chat()
+                currentSettings.chat(),
+                currentSettings.display()
         );
         return spawnService.location();
     }
@@ -262,7 +263,17 @@ public final class DreamRpgContext implements AutoCloseable {
         }
     }
 
-    private void validateIntegrations(ScoreboardSettings scoreboard) {
+    private void validateIntegrations(
+            DreamRpgSettings settings,
+            ScoreboardSettings scoreboard
+    ) {
+        if ((settings.containsPlaceholderApiToken() || scoreboard.containsPlaceholderApiToken())
+                && !lib.placeholderService().isAvailable()) {
+            throw new IllegalStateException(
+                    "DreamRPG config.yml or scoreboard.yml uses PlaceholderAPI tokens, "
+                            + "but PlaceholderAPI is unavailable"
+            );
+        }
         if (!scoreboard.normal().enabled()) return;
         if (scoreboard.containsNativePlaceholder("points") && !lib.playerPointsService().isAvailable()) {
             throw new IllegalStateException("scoreboard.yml uses {points}, but PlayerPoints is unavailable");
@@ -271,11 +282,6 @@ public final class DreamRpgContext implements AutoCloseable {
         if (scoreboard.containsNativePlaceholder("world")
                 && !scoreboard.containsNativePlaceholder("location")) {
             worldLocation.requireWorldManagerAvailable();
-        }
-        if (scoreboard.containsPlaceholderApiToken() && !lib.placeholderService().isAvailable()) {
-            throw new IllegalStateException(
-                    "scoreboard.yml uses PlaceholderAPI tokens, but PlaceholderAPI is unavailable"
-            );
         }
     }
 
