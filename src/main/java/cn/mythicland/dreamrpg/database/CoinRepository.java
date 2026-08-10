@@ -34,42 +34,6 @@ public final class CoinRepository implements CoinStore {
         this.database = Objects.requireNonNull(context, "context").database();
     }
 
-    @Override
-    public BigDecimal loadOrCreate(UUID uniqueId) throws SQLException {
-        Objects.requireNonNull(uniqueId, "uniqueId");
-        String uuid = uniqueId.toString();
-        return database.transaction(connection -> ensureAccount(connection, uuid));
-    }
-
-    @Override
-    public BigDecimal adjust(UUID uniqueId, BigDecimal delta)
-            throws SQLException, InsufficientCoinsException {
-        Objects.requireNonNull(uniqueId, "uniqueId");
-        BigDecimal normalizedDelta = normalizeDelta(delta);
-        String uuid = uniqueId.toString();
-        return database.transaction(connection -> {
-            BigDecimal current = ensureAccount(connection, uuid);
-            BigDecimal next = current.add(normalizedDelta).setScale(2, RoundingMode.UNNECESSARY);
-            if (next.signum() < 0) {
-                throw new InsufficientCoinsException(uniqueId, normalizedDelta.negate(), current);
-            }
-            if (next.compareTo(MAXIMUM) > 0) {
-                throw new IllegalStateException("DreamRPG coin balance exceeds the maximum amount: " + uniqueId);
-            }
-            try (PreparedStatement statement = connection.prepareStatement(
-                    "UPDATE player_coins SET balance = ?, updated_at = ? WHERE uuid = ?"
-            )) {
-                statement.setBigDecimal(1, next);
-                statement.setLong(2, System.currentTimeMillis());
-                statement.setString(3, uuid);
-                if (statement.executeUpdate() != 1) {
-                    throw new SQLException("Cannot update missing DreamRPG coin account: " + uniqueId);
-                }
-            }
-            return next;
-        });
-    }
-
     private static BigDecimal ensureAccount(Connection connection, String uuid) throws SQLException {
         BigDecimal existing = selectBalance(connection, uuid);
         if (existing != null) return existing;
@@ -116,5 +80,41 @@ public final class CoinRepository implements CoinStore {
             throw new IllegalArgumentException("delta exceeds the maximum coin amount");
         }
         return normalized;
+    }
+
+    @Override
+    public BigDecimal loadOrCreate(UUID uniqueId) throws SQLException {
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        String uuid = uniqueId.toString();
+        return database.transaction(connection -> ensureAccount(connection, uuid));
+    }
+
+    @Override
+    public BigDecimal adjust(UUID uniqueId, BigDecimal delta)
+            throws SQLException, InsufficientCoinsException {
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        BigDecimal normalizedDelta = normalizeDelta(delta);
+        String uuid = uniqueId.toString();
+        return database.transaction(connection -> {
+            BigDecimal current = ensureAccount(connection, uuid);
+            BigDecimal next = current.add(normalizedDelta).setScale(2, RoundingMode.UNNECESSARY);
+            if (next.signum() < 0) {
+                throw new InsufficientCoinsException(uniqueId, normalizedDelta.negate(), current);
+            }
+            if (next.compareTo(MAXIMUM) > 0) {
+                throw new IllegalStateException("DreamRPG coin balance exceeds the maximum amount: " + uniqueId);
+            }
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE player_coins SET balance = ?, updated_at = ? WHERE uuid = ?"
+            )) {
+                statement.setBigDecimal(1, next);
+                statement.setLong(2, System.currentTimeMillis());
+                statement.setString(3, uuid);
+                if (statement.executeUpdate() != 1) {
+                    throw new SQLException("Cannot update missing DreamRPG coin account: " + uniqueId);
+                }
+            }
+            return next;
+        });
     }
 }

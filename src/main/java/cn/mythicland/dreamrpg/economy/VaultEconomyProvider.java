@@ -50,7 +50,7 @@ public final class VaultEconomyProvider implements Listener {
      * Creates the Vault provider adapter.
      *
      * @param plugin owning plugin
-     * @param coins DreamRPG authoritative coin service
+     * @param coins  DreamRPG authoritative coin service
      */
     public VaultEconomyProvider(JavaPlugin plugin, CoinService coins) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
@@ -153,83 +153,8 @@ public final class VaultEconomyProvider implements Listener {
         plugin.getServer().getServicesManager().unregister(serviceType, service);
     }
 
-    private static final class EconomyInvocationHandler implements InvocationHandler {
-
-        private final CoinService coins;
-        private final EconomyResponseFactory responses;
-
-        private EconomyInvocationHandler(
-                CoinService coins,
-                EconomyResponseFactory responses
-        ) {
-            this.coins = coins;
-            this.responses = responses;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) {
-            String methodName = method.getName();
-            if (method.getDeclaringClass() == Object.class) return invokeObjectMethod(proxy, methodName, arguments);
-            return switch (methodName) {
-                case "isEnabled" -> true;
-                case "getName" -> "DreamRPG";
-                case "hasBankSupport" -> false;
-                case "fractionalDigits" -> 2;
-                case "format" -> format(formatAmount(arguments));
-                case "currencyNamePlural", "currencyNameSingular" -> "硬币";
-                case "hasAccount", "createPlayerAccount" -> createAccount(arguments);
-                case "getBalance" -> balance(account(arguments));
-                case "has" -> has(account(arguments), amount(arguments));
-                case "depositPlayer" -> adjust(account(arguments), amount(arguments), true);
-                case "withdrawPlayer" -> adjust(account(arguments), amount(arguments), false);
-                case "getBanks" -> List.of();
-                case "createBank", "deleteBank", "bankBalance", "bankHas", "bankWithdraw",
-                        "bankDeposit", "isBankOwner", "isBankMember" -> responses.notImplemented(
-                        "DreamRPG coins do not support Vault bank accounts"
-                );
-                default -> throw new UnsupportedOperationException(
-                        "Unsupported Vault Economy method: " + method
-                );
-            };
-        }
-
-        private Object invokeObjectMethod(Object proxy, String methodName, Object[] arguments) {
-            return switch (methodName) {
-                case "toString" -> "DreamRPG Vault Economy provider";
-                case "hashCode" -> System.identityHashCode(proxy);
-                case "equals" -> proxy == arguments[0];
-                default -> throw new UnsupportedOperationException("Unsupported Object method: " + methodName);
-            };
-        }
-
-        @SuppressWarnings("SameReturnValue")
-        private boolean createAccount(Object[] arguments) {
-            coins.balance(account(arguments));
-            return true;
-        }
-
-        private double balance(UUID uniqueId) {
-            return coins.balance(uniqueId).doubleValue();
-        }
-
-        private boolean has(UUID uniqueId, BigDecimal amount) {
-            return coins.has(uniqueId, amount);
-        }
-
-        private Object adjust(UUID uniqueId, BigDecimal amount, boolean deposit) {
-            try {
-                CoinTransaction transaction = deposit
-                        ? coins.deposit(uniqueId, amount, "Vault")
-                        : coins.withdraw(uniqueId, amount, "Vault");
-                return responses.success(amount.doubleValue(), transaction.balance().doubleValue());
-            } catch (InsufficientCoinsException | IllegalArgumentException exception) {
-                return responses.failure(
-                        amount.doubleValue(),
-                        coins.balance(uniqueId).doubleValue(),
-                        exception.getMessage()
-                );
-            }
-        }
+    private record EconomyInvocationHandler(CoinService coins,
+                                            EconomyResponseFactory responses) implements InvocationHandler {
 
         @SuppressWarnings("deprecation")
         private static UUID account(Object[] arguments) {
@@ -281,17 +206,74 @@ public final class VaultEconomyProvider implements Listener {
             );
             return formatter.format(amount) + " 硬币";
         }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] arguments) {
+            String methodName = method.getName();
+            if (method.getDeclaringClass() == Object.class) return invokeObjectMethod(proxy, methodName, arguments);
+            return switch (methodName) {
+                case "isEnabled" -> true;
+                case "getName" -> "DreamRPG";
+                case "hasBankSupport" -> false;
+                case "fractionalDigits" -> 2;
+                case "format" -> format(formatAmount(arguments));
+                case "currencyNamePlural", "currencyNameSingular" -> "硬币";
+                case "hasAccount", "createPlayerAccount" -> createAccount(arguments);
+                case "getBalance" -> balance(account(arguments));
+                case "has" -> has(account(arguments), amount(arguments));
+                case "depositPlayer" -> adjust(account(arguments), amount(arguments), true);
+                case "withdrawPlayer" -> adjust(account(arguments), amount(arguments), false);
+                case "getBanks" -> List.of();
+                case "createBank", "deleteBank", "bankBalance", "bankHas", "bankWithdraw",
+                     "bankDeposit", "isBankOwner", "isBankMember" -> responses.notImplemented(
+                        "DreamRPG coins do not support Vault bank accounts"
+                );
+                default -> throw new UnsupportedOperationException(
+                        "Unsupported Vault Economy method: " + method
+                );
+            };
+        }
+
+        private Object invokeObjectMethod(Object proxy, String methodName, Object[] arguments) {
+            return switch (methodName) {
+                case "toString" -> "DreamRPG Vault Economy provider";
+                case "hashCode" -> System.identityHashCode(proxy);
+                case "equals" -> proxy == arguments[0];
+                default -> throw new UnsupportedOperationException("Unsupported Object method: " + methodName);
+            };
+        }
+
+        @SuppressWarnings("SameReturnValue")
+        private boolean createAccount(Object[] arguments) {
+            coins.balance(account(arguments));
+            return true;
+        }
+
+        private double balance(UUID uniqueId) {
+            return coins.balance(uniqueId).doubleValue();
+        }
+
+        private boolean has(UUID uniqueId, BigDecimal amount) {
+            return coins.has(uniqueId, amount);
+        }
+
+        private Object adjust(UUID uniqueId, BigDecimal amount, boolean deposit) {
+            try {
+                CoinTransaction transaction = deposit
+                        ? coins.deposit(uniqueId, amount, "Vault")
+                        : coins.withdraw(uniqueId, amount, "Vault");
+                return responses.success(amount.doubleValue(), transaction.balance().doubleValue());
+            } catch (InsufficientCoinsException | IllegalArgumentException exception) {
+                return responses.failure(
+                        amount.doubleValue(),
+                        coins.balance(uniqueId).doubleValue(),
+                        exception.getMessage()
+                );
+            }
+        }
     }
 
-    private static final class EconomyResponseFactory {
-
-        private final Constructor<?> constructor;
-        private final Class<?> responseType;
-
-        private EconomyResponseFactory(Constructor<?> constructor, Class<?> responseType) {
-            this.constructor = constructor;
-            this.responseType = responseType;
-        }
+    private record EconomyResponseFactory(Constructor<?> constructor, Class<?> responseType) {
 
         private static EconomyResponseFactory load(ClassLoader classLoader)
                 throws ClassNotFoundException, NoSuchMethodException {

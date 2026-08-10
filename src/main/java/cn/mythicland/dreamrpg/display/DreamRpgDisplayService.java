@@ -27,16 +27,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Owns DreamRPG player presentation, TAB/head teams, and the standalone sidebar scoreboard.
@@ -65,11 +56,11 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     /**
      * Creates the display service.
      *
-     * @param plugin owning plugin
-     * @param context initialized DreamRPG context
-     * @param profiles profile service
-     * @param coins DreamRPG authoritative coin service
-     * @param locations world location service
+     * @param plugin      owning plugin
+     * @param context     initialized DreamRPG context
+     * @param profiles    profile service
+     * @param coins       DreamRPG authoritative coin service
+     * @param locations   world location service
      * @param loadingGate profile-loading state service
      */
     public DreamRpgDisplayService(
@@ -92,6 +83,61 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         this.settings = initializedContext.scoreboard();
         this.displaySettings = initializedContext.settings().display();
         this.animationTick = 0L;
+    }
+
+    private static Map<UUID, String> buildTeamNames(List<Player> onlinePlayers) {
+        Map<UUID, String> teamNames = new LinkedHashMap<>();
+        for (int index = 0; index < onlinePlayers.size(); index++) {
+            Player player = onlinePlayers.get(index);
+            String teamName = "drpg" + Integer.toHexString(index);
+            teamNames.put(player.getUniqueId(), teamName);
+        }
+        return teamNames;
+    }
+
+    private static Map<String, Integer> buildHealthScores(List<Player> onlinePlayers) {
+        Map<String, Integer> scores = new LinkedHashMap<>();
+        for (Player player : onlinePlayers) {
+            double health = player.getHealth();
+            if (!Double.isFinite(health) || health < 0.0D) {
+                throw new IllegalStateException("Player has an invalid health value: " + player.getName());
+            }
+            double roundedHealth = Math.floor(health);
+            if (roundedHealth > Integer.MAX_VALUE) {
+                throw new IllegalStateException("Player health exceeds scoreboard range: " + player.getName());
+            }
+            scores.put(player.getName(), (int) roundedHealth);
+        }
+        return scores;
+    }
+
+    private static String formatCoins(BigDecimal value) {
+        DecimalFormat format = new DecimalFormat(
+                "#,##0.##",
+                DecimalFormatSymbols.getInstance(Locale.ROOT)
+        );
+        return format.format(Objects.requireNonNull(value, "value"));
+    }
+
+    private static String formatNumber(double value) {
+        return String.format(Locale.ROOT, "%.1f", value);
+    }
+
+    private static String normalizeTabText(String text) {
+        return LegacyText.stripColor(text).isBlank() ? "" : text;
+    }
+
+    private static BaseComponent[] toComponents(String text) {
+        return text.isEmpty() ? new BaseComponent[0] : TextComponent.fromLegacyText(text);
+    }
+
+    private static void applyHealthDisplayScale(Player player) {
+        player.setHealthScale(HEALTH_DISPLAY_SCALE);
+        player.setHealthScaled(true);
+    }
+
+    private static void ensureMainThread() {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Display update must run on the main thread");
     }
 
     /**
@@ -174,7 +220,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     /**
      * Refreshes scoreboard and player presentation settings.
      *
-     * @param refreshedDisplaySettings new TAB and name-tag settings
+     * @param refreshedDisplaySettings    new TAB and name-tag settings
      * @param refreshedScoreboardSettings new scoreboard settings
      */
     public void reload(
@@ -214,32 +260,6 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         }
         tabHeaderFooters.clear();
         closeScoreboardSessions();
-    }
-
-    private static Map<UUID, String> buildTeamNames(List<Player> onlinePlayers) {
-        Map<UUID, String> teamNames = new LinkedHashMap<>();
-        for (int index = 0; index < onlinePlayers.size(); index++) {
-            Player player = onlinePlayers.get(index);
-            String teamName = "drpg" + Integer.toHexString(index);
-            teamNames.put(player.getUniqueId(), teamName);
-        }
-        return teamNames;
-    }
-
-    private static Map<String, Integer> buildHealthScores(List<Player> onlinePlayers) {
-        Map<String, Integer> scores = new LinkedHashMap<>();
-        for (Player player : onlinePlayers) {
-            double health = player.getHealth();
-            if (!Double.isFinite(health) || health < 0.0D) {
-                throw new IllegalStateException("Player has an invalid health value: " + player.getName());
-            }
-            double roundedHealth = Math.floor(health);
-            if (roundedHealth > Integer.MAX_VALUE) {
-                throw new IllegalStateException("Player health exceeds scoreboard range: " + player.getName());
-            }
-            scores.put(player.getName(), (int) roundedHealth);
-        }
-        return scores;
     }
 
     private String renderTitle(Player viewer) {
@@ -416,18 +436,6 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         return values;
     }
 
-    private static String formatCoins(BigDecimal value) {
-        DecimalFormat format = new DecimalFormat(
-                "#,##0.##",
-                DecimalFormatSymbols.getInstance(Locale.ROOT)
-        );
-        return format.format(Objects.requireNonNull(value, "value"));
-    }
-
-    private static String formatNumber(double value) {
-        return String.format(Locale.ROOT, "%.1f", value);
-    }
-
     private void applyPlayerName(Player player, PlayerProfile profile) {
         String displayName = profile.career().nameColor() + player.getName();
         if (!displayName.equals(player.getDisplayName())) player.setDisplayName(displayName);
@@ -443,23 +451,6 @@ public final class DreamRpgDisplayService implements AutoCloseable {
         if (applied != null && applied.hasText()) {
             player.setPlayerListHeaderFooter(toComponents(""), toComponents(""));
         }
-    }
-
-    private static String normalizeTabText(String text) {
-        return LegacyText.stripColor(text).isBlank() ? "" : text;
-    }
-
-    private static BaseComponent[] toComponents(String text) {
-        return text.isEmpty() ? new BaseComponent[0] : TextComponent.fromLegacyText(text);
-    }
-
-    private static void applyHealthDisplayScale(Player player) {
-        player.setHealthScale(HEALTH_DISPLAY_SCALE);
-        player.setHealthScaled(true);
-    }
-
-    private static void ensureMainThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Display update must run on the main thread");
     }
 
     private void closeScoreboardSessions() {

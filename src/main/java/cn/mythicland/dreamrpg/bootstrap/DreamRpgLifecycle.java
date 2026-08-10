@@ -2,6 +2,8 @@ package cn.mythicland.dreamrpg.bootstrap;
 
 import cn.mythicland.dreamrpg.display.DreamRpgDisplayService;
 import cn.mythicland.dreamrpg.enderchest.EnderChestService;
+import cn.mythicland.dreamrpg.experience.ExperienceService;
+import cn.mythicland.dreamrpg.health.HealthProgressionService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
 import cn.mythicland.lib.bootstrap.LibPluginLifecycle;
@@ -24,6 +26,8 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
     private final PlayerProfileService profiles;
     private final DreamRpgDisplayService display;
     private final PlayerStorageService storage;
+    private final ExperienceService experience;
+    private final HealthProgressionService health;
     private final EnderChestService enderChest;
     private BukkitTask scoreboardTask;
     private BukkitTask titleTask;
@@ -31,11 +35,13 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
     /**
      * Creates the DreamRPG lifecycle module.
      *
-     * @param plugin plugin entry point
-     * @param context initialized DreamRPG context
-     * @param profiles profile service
-     * @param display display service
-     * @param storage player storage service
+     * @param plugin     plugin entry point
+     * @param context    initialized DreamRPG context
+     * @param profiles   profile service
+     * @param display    display service
+     * @param storage    player storage service
+     * @param experience experience service
+     * @param health     health progression service
      * @param enderChest ender-chest service
      */
     public DreamRpgLifecycle(
@@ -45,6 +51,8 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
             PlayerProfileService profiles,
             DreamRpgDisplayService display,
             PlayerStorageService storage,
+            ExperienceService experience,
+            HealthProgressionService health,
             EnderChestService enderChest
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
@@ -53,7 +61,15 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
         this.profiles = Objects.requireNonNull(profiles, "profiles");
         this.display = Objects.requireNonNull(display, "display");
         this.storage = Objects.requireNonNull(storage, "storage");
+        this.experience = Objects.requireNonNull(experience, "experience");
+        this.health = Objects.requireNonNull(health, "health");
         this.enderChest = Objects.requireNonNull(enderChest, "enderChest");
+    }
+
+    private static RuntimeException appendFailure(RuntimeException current, RuntimeException next) {
+        if (current == null) return next;
+        current.addSuppressed(next);
+        return current;
     }
 
     /**
@@ -61,6 +77,7 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
      */
     @Override
     public void enable() {
+        experience.start();
         storage.start();
         restartDisplayTasks();
         display.refreshAll();
@@ -74,6 +91,8 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
     public void reload() {
         context.reload();
         profiles.reloadCatalog(context.careerCatalog());
+        experience.reload();
+        health.reload();
         display.reload(context.settings().display(), context.scoreboard());
         restartDisplayTasks();
         plugin.getLogger().info("DreamRPG configuration reloaded; runtime libraries remain unchanged.");
@@ -103,6 +122,11 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
             storage.close();
         } catch (RuntimeException exception) {
             failure = appendFailure(failure, exception);
+        }
+        try {
+            experience.close();
+        } catch (RuntimeException exception) {
+            failure = appendFailure(failure, exception);
         } finally {
             profiles.clear();
             context.close();
@@ -126,11 +150,5 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
                 context.scoreboard().normal().titleUpdateTicks(),
                 display::advanceTitle
         );
-    }
-
-    private static RuntimeException appendFailure(RuntimeException current, RuntimeException next) {
-        if (current == null) return next;
-        current.addSuppressed(next);
-        return current;
     }
 }

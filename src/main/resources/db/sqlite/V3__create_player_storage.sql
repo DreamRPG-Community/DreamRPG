@@ -1,5 +1,10 @@
-CREATE TABLE IF NOT EXISTS player_storage (
-    uuid VARCHAR(36) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS player_storage
+(
+    uuid
+    VARCHAR
+(
+    36
+) PRIMARY KEY,
     format_version INTEGER NOT NULL,
     inventory_base64 TEXT NOT NULL,
     armor_base64 TEXT NOT NULL,
@@ -10,4 +15,4 @@ CREATE TABLE IF NOT EXISTS player_storage (
     version BIGINT NOT NULL,
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL
-)
+    )

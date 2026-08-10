@@ -73,6 +73,22 @@ public record PlayerStorageSnapshot(
         );
     }
 
+    private static ItemStack[] copyItems(ItemStack[] source, int expectedLength, String fieldName) {
+        Objects.requireNonNull(source, fieldName);
+        if (source.length != expectedLength) {
+            throw new IllegalArgumentException(
+                    fieldName + " must contain exactly " + expectedLength + " slots"
+            );
+        }
+        ItemStack[] copy = new ItemStack[source.length];
+        for (int index = 0; index < source.length; index++) copy[index] = copyItem(source[index]);
+        return copy;
+    }
+
+    private static ItemStack copyItem(ItemStack item) {
+        return item == null ? null : item.clone();
+    }
+
     @Override
     public ItemStack[] inventory() {
         return copyItems(inventory, INVENTORY_SIZE, "inventory");
@@ -139,21 +155,5 @@ public record PlayerStorageSnapshot(
                 formatVersion,
                 databaseVersion
         );
-    }
-
-    private static ItemStack[] copyItems(ItemStack[] source, int expectedLength, String fieldName) {
-        Objects.requireNonNull(source, fieldName);
-        if (source.length != expectedLength) {
-            throw new IllegalArgumentException(
-                    fieldName + " must contain exactly " + expectedLength + " slots"
-            );
-        }
-        ItemStack[] copy = new ItemStack[source.length];
-        for (int index = 0; index < source.length; index++) copy[index] = copyItem(source[index]);
-        return copy;
-    }
-
-    private static ItemStack copyItem(ItemStack item) {
-        return item == null ? null : item.clone();
     }
 }

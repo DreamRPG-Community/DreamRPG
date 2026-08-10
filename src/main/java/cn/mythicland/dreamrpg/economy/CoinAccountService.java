@@ -34,6 +34,20 @@ public final class CoinAccountService implements CoinService {
         this.store = Objects.requireNonNull(store, "store");
     }
 
+    private static CoinTransaction validateRequest(
+            UUID uniqueId,
+            CoinTransaction.Type type,
+            BigDecimal amount,
+            String source
+    ) {
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        return new CoinTransaction(uniqueId, type, amount, ZERO, source);
+    }
+
+    private static BigDecimal validateAmount(UUID uniqueId, BigDecimal amount) {
+        return validateRequest(uniqueId, CoinTransaction.Type.WITHDRAW, amount, "has").amount();
+    }
+
     @Override
     public BigDecimal balance(UUID uniqueId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
@@ -82,20 +96,6 @@ public final class CoinAccountService implements CoinService {
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to load DreamRPG coin balance: " + uniqueId, exception);
         }
-    }
-
-    private static CoinTransaction validateRequest(
-            UUID uniqueId,
-            CoinTransaction.Type type,
-            BigDecimal amount,
-            String source
-    ) {
-        Objects.requireNonNull(uniqueId, "uniqueId");
-        return new CoinTransaction(uniqueId, type, amount, ZERO, source);
-    }
-
-    private static BigDecimal validateAmount(UUID uniqueId, BigDecimal amount) {
-        return validateRequest(uniqueId, CoinTransaction.Type.WITHDRAW, amount, "has").amount();
     }
 
     private Object lockFor(UUID uniqueId) {

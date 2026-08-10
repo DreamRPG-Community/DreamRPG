@@ -1,13 +1,14 @@
 package cn.mythicland.dreamrpg.config;
 
+import cn.mythicland.lib.config.ConfigSupport;
+import cn.mythicland.lib.config.ConfigValue;
+import cn.mythicland.lib.config.ConfigView;
 import cn.mythicland.lib.text.TemplateRenderer;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -41,24 +42,70 @@ public record DreamRpgSettings(
      */
     public static DreamRpgSettings load(FileConfiguration configuration) {
         Objects.requireNonNull(configuration, "configuration");
-        URI libraryRepository = URI.create(requiredString(configuration, "libraries.repository"));
-        DatabaseSettings database = DatabaseSettings.load(configuration);
+        if (!configuration.contains("database.mode")) {
+            throw new IllegalStateException("Configuration requires a non-empty string: database.mode");
+        }
+        return from(ConfigSupport.bind(configuration, RawSettings.class));
+    }
+
+    static DreamRpgSettings bind(ConfigView configuration) {
+        return from(Objects.requireNonNull(configuration, "configuration").bind(RawSettings.class));
+    }
+
+    private static DreamRpgSettings from(RawSettings raw) {
+        URI libraryRepository = URI.create(raw.libraryRepository());
+        DatabaseSettings database = new DatabaseSettings(
+                raw.databaseMode(),
+                new SqliteSettings(raw.sqliteFile()),
+                new MySqlSettings(
+                        raw.mysqlHost(),
+                        raw.mysqlPort(),
+                        raw.mysqlDatabase(),
+                        raw.mysqlUsername(),
+                        raw.mysqlPassword(),
+                        raw.mysqlUseSsl(),
+                        raw.mysqlServerTimezone()
+                )
+        );
         SpawnSettings spawn = new SpawnSettings(
-                requiredString(configuration, "spawn.world"),
-                requiredDouble(configuration, "spawn.x"),
-                requiredDouble(configuration, "spawn.y"),
-                requiredDouble(configuration, "spawn.z"),
-                (float) requiredDouble(configuration, "spawn.yaw"),
-                (float) requiredDouble(configuration, "spawn.pitch"),
-                requiredBoolean(configuration, "spawn.teleport-on-join"),
-                requiredBoolean(configuration, "spawn.teleport-on-respawn")
+                raw.spawnWorld(),
+                raw.spawnX(),
+                raw.spawnY(),
+                raw.spawnZ(),
+                (float) raw.spawnYaw(),
+                (float) raw.spawnPitch(),
+                raw.teleportOnJoin(),
+                raw.teleportOnRespawn()
         );
-        ChatSettings chat = new ChatSettings(
-                requiredString(configuration, "chat.format"),
-                requiredString(configuration, "chat.color-permission")
+        ChatSettings chat = new ChatSettings(raw.chatFormat(), raw.colorPermission());
+        DisplaySettings display = new DisplaySettings(
+                new TabSettings(raw.tabHeader(), raw.tabFooter(), raw.playerNameFormat()),
+                raw.nameTagFormat()
         );
-        DisplaySettings display = DisplaySettings.load(configuration);
         return new DreamRpgSettings(libraryRepository, database, spawn, chat, display);
+    }
+
+    private static String requireTemplate(String value, String path) {
+        String template = Objects.requireNonNull(value, path);
+        if (template.isBlank()) throw new IllegalArgumentException(path + " cannot be blank");
+        return template;
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static void requireSingleNameSlot(String template, String path) {
+        String slot = "{name}";
+        int first = template.indexOf(slot);
+        if (first < 0 || first != template.lastIndexOf(slot)) {
+            throw new IllegalArgumentException(path + " must contain exactly one {name} placeholder");
+        }
+    }
+
+    private static String requireFileName(String value, String fieldName) {
+        String fileName = Objects.requireNonNull(value, fieldName).trim();
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {
+            throw new IllegalArgumentException(fieldName + " must be a single file name");
+        }
+        return fileName;
     }
 
     /**
@@ -84,7 +131,33 @@ public record DreamRpgSettings(
         return database.databasePath(pluginDataDirectory);
     }
 
-    /** Database storage settings. */
+    /**
+     * Database provider selected by database.mode.
+     */
+    public enum DatabaseMode {
+        SQLITE("sqlite"),
+        MYSQL("mysql");
+
+        private final String configValue;
+
+        DatabaseMode(String configValue) {
+            this.configValue = configValue;
+        }
+
+        /**
+         * Returns the configuration value.
+         *
+         * @return lower-case value
+         */
+        public String configValue() {
+            return configValue;
+        }
+
+    }
+
+    /**
+     * Database storage settings.
+     */
     public record DatabaseSettings(
             DatabaseMode mode,
             SqliteSettings sqlite,
@@ -99,23 +172,6 @@ public record DreamRpgSettings(
             mode = Objects.requireNonNull(mode, "mode");
             sqlite = Objects.requireNonNull(sqlite, "sqlite");
             mysql = Objects.requireNonNull(mysql, "mysql");
-        }
-
-        private static DatabaseSettings load(FileConfiguration configuration) {
-            DatabaseMode mode = DatabaseMode.parse(requiredString(configuration, "database.mode"));
-            SqliteSettings sqlite = new SqliteSettings(
-                    optionalString(configuration, "database.sqlite.file", "profiles.db")
-            );
-            MySqlSettings mysql = new MySqlSettings(
-                    optionalString(configuration, "database.mysql.host", "127.0.0.1"),
-                    optionalInt(configuration, "database.mysql.port", 3306),
-                    optionalString(configuration, "database.mysql.database", "dreamrpg"),
-                    optionalString(configuration, "database.mysql.username", "root"),
-                    optionalPassword(configuration, "database.mysql.password"),
-                    optionalBoolean(configuration, "database.mysql.use-ssl", false),
-                    optionalString(configuration, "database.mysql.server-timezone", "Asia/Shanghai")
-            );
-            return new DatabaseSettings(mode, sqlite, mysql);
         }
 
         /**
@@ -136,7 +192,9 @@ public record DreamRpgSettings(
         }
     }
 
-    /** SQLite file settings. */
+    /**
+     * SQLite file settings.
+     */
     public record SqliteSettings(String fileName) {
 
         /**
@@ -147,36 +205,9 @@ public record DreamRpgSettings(
         }
     }
 
-    /** Database provider selected by database.mode. */
-    public enum DatabaseMode {
-        SQLITE("sqlite"),
-        MYSQL("mysql");
-
-        private final String configValue;
-
-        DatabaseMode(String configValue) {
-            this.configValue = configValue;
-        }
-
-        /**
-         * Returns the configuration value.
-         *
-         * @return lower-case value
-         */
-        public String configValue() {
-            return configValue;
-        }
-
-        private static DatabaseMode parse(String rawValue) {
-            String normalized = Objects.requireNonNull(rawValue, "rawValue").trim().toLowerCase(Locale.ROOT);
-            for (DatabaseMode value : values()) {
-                if (value.configValue.equals(normalized)) return value;
-            }
-            throw new IllegalArgumentException("Unsupported database.mode: " + rawValue);
-        }
-    }
-
-    /** MySQL 5.7-compatible connection settings. */
+    /**
+     * MySQL 5.7-compatible connection settings.
+     */
     public record MySqlSettings(
             String host,
             int port,
@@ -210,18 +241,6 @@ public record DreamRpgSettings(
             }
         }
 
-        /**
-         * Builds the JDBC URL without credentials.
-         *
-         * @return MySQL JDBC URL
-         */
-        public String jdbcUrl() {
-            return "jdbc:mysql://" + host + ":" + port + "/" + database
-                    + "?useUnicode=true&characterEncoding=utf8"
-                    + "&useSSL=" + useSsl
-                    + "&serverTimezone=" + serverTimezone;
-        }
-
         private static String requireText(String value, String fieldName) {
             String text = Objects.requireNonNull(value, fieldName).trim();
             if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
@@ -238,9 +257,23 @@ public record DreamRpgSettings(
         private static boolean containsPathOrUrlDelimiter(String value) {
             return value.indexOf('/') >= 0 || containsUrlDelimiter(value);
         }
+
+        /**
+         * Builds the JDBC URL without credentials.
+         *
+         * @return MySQL JDBC URL
+         */
+        public String jdbcUrl() {
+            return "jdbc:mysql://" + host + ":" + port + "/" + database
+                    + "?useUnicode=true&characterEncoding=utf8"
+                    + "&useSSL=" + useSsl
+                    + "&serverTimezone=" + serverTimezone;
+        }
     }
 
-    /** Main-city spawn settings. */
+    /**
+     * Main-city spawn settings.
+     */
     public record SpawnSettings(
             String worldName,
             double x,
@@ -261,7 +294,9 @@ public record DreamRpgSettings(
         }
     }
 
-    /** Chat presentation settings. */
+    /**
+     * Chat presentation settings.
+     */
     public record ChatSettings(String format, String colorPermission) {
 
         /**
@@ -275,11 +310,10 @@ public record DreamRpgSettings(
         }
     }
 
-    /** Player-facing TAB and name-tag presentation settings. */
+    /**
+     * Player-facing TAB and name-tag presentation settings.
+     */
     public record DisplaySettings(TabSettings tab, String nameTagFormat) {
-
-        private static final String DEFAULT_PLAYER_NAME_FORMAT = "{prefix}{name}        ";
-        private static final String DEFAULT_NAME_TAG_FORMAT = "{prefix}{name}";
 
         /**
          * Validates display settings.
@@ -291,26 +325,11 @@ public record DreamRpgSettings(
             requireSingleNameSlot(nameTagFormat, "display.name-tag-format");
         }
 
-        private static DisplaySettings load(FileConfiguration configuration) {
-            TabSettings tab = new TabSettings(
-                    optionalStringList(configuration, "display.tab.header", List.of()),
-                    optionalStringList(configuration, "display.tab.footer", List.of()),
-                    optionalTemplate(
-                            configuration,
-                            "display.tab.player-name-format",
-                            DEFAULT_PLAYER_NAME_FORMAT
-                    )
-            );
-            String configuredFormat = optionalTemplate(
-                    configuration,
-                    "display.name-tag-format",
-                    DEFAULT_NAME_TAG_FORMAT
-            );
-            return new DisplaySettings(tab, configuredFormat);
-        }
     }
 
-    /** TAB header, footer, and individual player-name settings. */
+    /**
+     * TAB header, footer, and individual player-name settings.
+     */
     public record TabSettings(
             List<String> header,
             List<String> footer,
@@ -327,124 +346,145 @@ public record DreamRpgSettings(
         }
     }
 
-    private static String requiredString(FileConfiguration configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof String value) || value.isBlank()) {
-            throw new IllegalStateException("Configuration requires a non-empty string: " + path);
-        }
-        return value.trim();
-    }
-
-    private static String optionalString(FileConfiguration configuration, String path, String defaultValue) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return defaultValue;
-        if (!(rawValue instanceof String value) || value.isBlank()) {
-            throw new IllegalStateException("Configuration requires a non-empty string: " + path);
-        }
-        return value.trim();
-    }
-
-    private static String optionalTemplate(FileConfiguration configuration, String path, String defaultValue) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return defaultValue;
-        if (!(rawValue instanceof String value)) {
-            throw new IllegalStateException("Configuration requires a string: " + path);
-        }
-        return requireTemplate(value, path);
-    }
-
-    private static List<String> optionalStringList(
-            FileConfiguration configuration,
-            String path,
-            List<String> defaultValue
+    private record RawSettings(
+            @ConfigValue(
+                    path = "libraries.repository",
+                    defaultValue = "https://repo1.maven.org/maven2/",
+                    nonBlank = true
+            )
+            String libraryRepository,
+            @ConfigValue(
+                    path = "database.mode",
+                    defaultValue = "SQLITE"
+            )
+            DatabaseMode databaseMode,
+            @ConfigValue(
+                    path = "database.sqlite.file",
+                    defaultValue = "profiles.db",
+                    nonBlank = true
+            )
+            String sqliteFile,
+            @ConfigValue(
+                    path = "database.mysql.host",
+                    defaultValue = "127.0.0.1",
+                    nonBlank = true
+            )
+            String mysqlHost,
+            @ConfigValue(
+                    path = "database.mysql.port",
+                    defaultValue = "3306",
+                    positive = true
+            )
+            int mysqlPort,
+            @ConfigValue(
+                    path = "database.mysql.database",
+                    defaultValue = "dreamrpg",
+                    nonBlank = true
+            )
+            String mysqlDatabase,
+            @ConfigValue(
+                    path = "database.mysql.username",
+                    defaultValue = "root",
+                    nonBlank = true
+            )
+            String mysqlUsername,
+            @ConfigValue(
+                    path = "database.mysql.password",
+                    defaultValue = "",
+                    trim = false
+            )
+            String mysqlPassword,
+            @ConfigValue(
+                    path = "database.mysql.use-ssl",
+                    defaultValue = "false"
+            )
+            boolean mysqlUseSsl,
+            @ConfigValue(
+                    path = "database.mysql.server-timezone",
+                    defaultValue = "Asia/Shanghai",
+                    nonBlank = true
+            )
+            String mysqlServerTimezone,
+            @ConfigValue(
+                    path = "spawn.world",
+                    defaultValue = "world",
+                    nonBlank = true
+            )
+            String spawnWorld,
+            @ConfigValue(
+                    path = "spawn.x",
+                    defaultValue = "0.5"
+            )
+            double spawnX,
+            @ConfigValue(
+                    path = "spawn.y",
+                    defaultValue = "7.0"
+            )
+            double spawnY,
+            @ConfigValue(
+                    path = "spawn.z",
+                    defaultValue = "2.5"
+            )
+            double spawnZ,
+            @ConfigValue(
+                    path = "spawn.yaw",
+                    defaultValue = "180"
+            )
+            double spawnYaw,
+            @ConfigValue(
+                    path = "spawn.pitch",
+                    defaultValue = "0"
+            )
+            double spawnPitch,
+            @ConfigValue(
+                    path = "spawn.teleport-on-join",
+                    defaultValue = "true"
+            )
+            boolean teleportOnJoin,
+            @ConfigValue(
+                    path = "spawn.teleport-on-respawn",
+                    defaultValue = "true"
+            )
+            boolean teleportOnRespawn,
+            @ConfigValue(
+                    path = "chat.format",
+                    defaultValue = "%luckperms_prefix% {prefix} {name}&7: &f{message}",
+                    nonBlank = true,
+                    trim = false
+            )
+            String chatFormat,
+            @ConfigValue(
+                    path = "chat.color-permission",
+                    defaultValue = "dreamrpg.chat.color",
+                    nonBlank = true
+            )
+            String colorPermission,
+            @ConfigValue(
+                    path = "display.tab.header",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> tabHeader,
+            @ConfigValue(
+                    path = "display.tab.footer",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> tabFooter,
+            @ConfigValue(
+                    path = "display.tab.player-name-format",
+                    defaultValue = "{prefix}{name}        ",
+                    nonBlank = true,
+                    trim = false
+            )
+            String playerNameFormat,
+            @ConfigValue(
+                    path = "display.name-tag-format",
+                    defaultValue = "{prefix}{name}",
+                    nonBlank = true,
+                    trim = false
+            )
+            String nameTagFormat
     ) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return List.copyOf(defaultValue);
-        if (!(rawValue instanceof List<?> values)) {
-            throw new IllegalStateException("Configuration requires a string list: " + path);
-        }
-        List<String> result = new ArrayList<>(values.size());
-        for (Object value : values) {
-            if (!(value instanceof String line)) {
-                throw new IllegalStateException("Configuration requires string list entries: " + path);
-            }
-            result.add(line);
-        }
-        return List.copyOf(result);
-    }
-
-    private static String requireTemplate(String value, String path) {
-        String template = Objects.requireNonNull(value, path);
-        if (template.isBlank()) throw new IllegalArgumentException(path + " cannot be blank");
-        return template;
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static void requireSingleNameSlot(String template, String path) {
-        String slot = "{name}";
-        int first = template.indexOf(slot);
-        if (first < 0 || first != template.lastIndexOf(slot)) {
-            throw new IllegalArgumentException(path + " must contain exactly one {name} placeholder");
-        }
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static String optionalPassword(FileConfiguration configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return "";
-        if (!(rawValue instanceof String value)) {
-            throw new IllegalStateException("Configuration requires a string: " + path);
-        }
-        return value;
-    }
-
-    private static boolean requiredBoolean(FileConfiguration configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof Boolean value)) throw new IllegalStateException("Configuration requires a boolean: " + path);
-        return value;
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static boolean optionalBoolean(FileConfiguration configuration, String path, boolean defaultValue) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return defaultValue;
-        if (!(rawValue instanceof Boolean value)) throw new IllegalStateException("Configuration requires a boolean: " + path);
-        return value;
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static int optionalInt(FileConfiguration configuration, String path, int defaultValue) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return defaultValue;
-        if (!(rawValue instanceof Number value)) throw new IllegalStateException("Configuration requires a number: " + path);
-        return value.intValue();
-    }
-
-    private static double optionalDouble(
-            FileConfiguration configuration,
-            String path,
-            double defaultValue
-    ) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return defaultValue;
-        if (!(rawValue instanceof Number value)) {
-            throw new IllegalStateException("Configuration requires a number: " + path);
-        }
-        return value.doubleValue();
-    }
-
-    private static double requiredDouble(FileConfiguration configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof Number value)) throw new IllegalStateException("Configuration requires a number: " + path);
-        return value.doubleValue();
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static String requireFileName(String value, String fieldName) {
-        String fileName = Objects.requireNonNull(value, fieldName).trim();
-        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {
-            throw new IllegalArgumentException(fieldName + " must be a single file name");
-        }
-        return fileName;
     }
 }

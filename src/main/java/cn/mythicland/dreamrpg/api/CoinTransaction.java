@@ -9,10 +9,10 @@ import java.util.UUID;
  * Immutable result of one DreamRPG coin ledger operation.
  *
  * @param uniqueId player whose balance changed
- * @param type operation direction
- * @param amount positive amount changed
- * @param balance balance after the operation
- * @param source business source recorded by the caller
+ * @param type     operation direction
+ * @param amount   positive amount changed
+ * @param balance  balance after the operation
+ * @param source   business source recorded by the caller
  */
 public record CoinTransaction(
         UUID uniqueId,
@@ -21,12 +21,6 @@ public record CoinTransaction(
         BigDecimal balance,
         String source
 ) {
-
-    /** The supported directions of a coin balance change. */
-    public enum Type {
-        DEPOSIT,
-        WITHDRAW
-    }
 
     /**
      * Validates and normalizes a transaction snapshot to Vault-compatible two decimal places.
@@ -69,5 +63,13 @@ public record CoinTransaction(
         String source = Objects.requireNonNull(value, "source").trim();
         if (source.isBlank()) throw new IllegalArgumentException("source cannot be blank");
         return source;
+    }
+
+    /**
+     * The supported directions of a coin balance change.
+     */
+    public enum Type {
+        DEPOSIT,
+        WITHDRAW
     }
 }

@@ -5,10 +5,10 @@ import java.util.Objects;
 /**
  * Immutable presentation snapshot for chat, TAB, and name tags.
  *
- * @param prefix    full career prefix including its configured spacing
- * @param nameColor color applied to the player name
+ * @param prefix     full career prefix including its configured spacing
+ * @param nameColor  color applied to the player name
  * @param playerName colored player name
- * @param tabName   complete TAB/name-tag presentation
+ * @param tabName    complete TAB/name-tag presentation
  */
 public record PlayerPresentation(
         String prefix,
@@ -17,7 +17,9 @@ public record PlayerPresentation(
         String tabName
 ) {
 
-    /** Eight spaces reserved after the player name in the TAB display name. */
+    /**
+     * Eight spaces reserved after the player name in the TAB display name.
+     */
     public static final String TAB_NAME_SUFFIX = "        ";
 
     /**

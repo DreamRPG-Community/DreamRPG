@@ -21,16 +21,15 @@ import java.util.UUID;
  */
 final class EnderChestMenu implements StatefulMenuView {
 
-    private static final String ENDER_CHEST_TITLE = "&8末影箱";
     static final int SIZE = PlayerStorageSnapshot.ENDER_CHEST_SIZE;
-
+    private static final String ENDER_CHEST_TITLE = "&8末影箱";
     private final UUID uniqueId;
     private final PlayerStorageService storage;
-    private ContainerAnimationHandle animation;
     private final ContainerAnimationSpec soundSpecification;
     private final boolean localSound;
     private final Runnable closeCallback;
     private final ItemStack[] initialContents;
+    private ContainerAnimationHandle animation;
     private boolean closed;
 
     EnderChestMenu(
@@ -48,6 +47,15 @@ final class EnderChestMenu implements StatefulMenuView {
         this.soundSpecification = ContainerAnimationSpec.enderChest();
         this.localSound = localSound;
         this.closeCallback = Objects.requireNonNull(closeCallback, "closeCallback");
+    }
+
+    private static ItemStack[] copyContents(ItemStack[] contents) {
+        ItemStack[] copy = new ItemStack[contents.length];
+        for (int index = 0; index < contents.length; index++) {
+            ItemStack item = contents[index];
+            copy[index] = item == null ? null : item.clone();
+        }
+        return copy;
     }
 
     void attachAnimation(ContainerAnimationHandle animation) {
@@ -116,14 +124,5 @@ final class EnderChestMenu implements StatefulMenuView {
             );
         }
         closeCallback.run();
-    }
-
-    private static ItemStack[] copyContents(ItemStack[] contents) {
-        ItemStack[] copy = new ItemStack[contents.length];
-        for (int index = 0; index < contents.length; index++) {
-            ItemStack item = contents[index];
-            copy[index] = item == null ? null : item.clone();
-        }
-        return copy;
     }
 }

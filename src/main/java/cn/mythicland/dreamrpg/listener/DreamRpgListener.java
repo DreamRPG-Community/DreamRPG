@@ -4,6 +4,7 @@ import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
 import cn.mythicland.dreamrpg.display.DreamRpgDisplayService;
 import cn.mythicland.dreamrpg.event.CareerChangedEvent;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
+import cn.mythicland.dreamrpg.experience.ExperienceService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
@@ -42,17 +43,19 @@ public final class DreamRpgListener implements Listener {
     private final DreamRpgDisplayService display;
     private final DreamRpgContext context;
     private final PlayerStorageService storage;
+    private final ExperienceService experience;
     private final PlayerLoadingGate loadingGate;
 
     /**
      * Creates the main player lifecycle listener.
      *
-     * @param plugin owning plugin
-     * @param tasks plugin-owned task scope
-     * @param context initialized DreamRPG context
-     * @param profiles profile service
-     * @param display display service
-     * @param storage player storage service
+     * @param plugin      owning plugin
+     * @param tasks       plugin-owned task scope
+     * @param context     initialized DreamRPG context
+     * @param profiles    profile service
+     * @param display     display service
+     * @param storage     player storage service
+     * @param experience  experience service
      * @param loadingGate player loading gate
      */
     public DreamRpgListener(
@@ -62,6 +65,7 @@ public final class DreamRpgListener implements Listener {
             PlayerProfileService profiles,
             DreamRpgDisplayService display,
             PlayerStorageService storage,
+            ExperienceService experience,
             PlayerLoadingGate loadingGate
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
@@ -72,6 +76,7 @@ public final class DreamRpgListener implements Listener {
         this.spawnService = context.spawnService();
         this.display = Objects.requireNonNull(display, "display");
         this.storage = Objects.requireNonNull(storage, "storage");
+        this.experience = Objects.requireNonNull(experience, "experience");
         this.loadingGate = Objects.requireNonNull(loadingGate, "loadingGate");
     }
 
@@ -104,6 +109,10 @@ public final class DreamRpgListener implements Listener {
                         storage.load(player.getUniqueId()),
                         (ignoredProfile, ignoredStorage) -> null
                 )
+                .thenCombine(
+                        experience.load(player.getUniqueId()),
+                        (ignored, ignoredExperience) -> null
+                )
                 .whenComplete((ignored, failure) -> {
                     if (failure != null) {
                         lib.runOnMain(() -> handleDataFailure(player, failure));
@@ -112,10 +121,12 @@ public final class DreamRpgListener implements Listener {
                     lib.runOnMain(() -> {
                         if (!player.isOnline() || !loadingGate.isLoading(player)) {
                             storage.discard(player.getUniqueId());
+                            experience.discard(player.getUniqueId());
                             profiles.remove(player.getUniqueId());
                             return;
                         }
                         storage.apply(player);
+                        experience.activate(player);
                         loadingGate.ready(player);
                         PlayerDataReadyEvent readyEvent = new PlayerDataReadyEvent(
                                 player.getUniqueId(),
@@ -124,7 +135,8 @@ public final class DreamRpgListener implements Listener {
                                                 "Player storage disappeared before ready event: "
                                                         + player.getUniqueId()
                                         )
-                                )
+                                ),
+                                experience.snapshot(player.getUniqueId())
                         );
                         Bukkit.getPluginManager().callEvent(readyEvent);
                         display.refreshAll();
@@ -179,6 +191,21 @@ public final class DreamRpgListener implements Listener {
         } else {
             storage.discard(uniqueId);
         }
+        if (experience.isLoaded(uniqueId)) {
+            experience.flush(uniqueId).whenComplete((ignored, failure) -> {
+                if (failure != null) {
+                    plugin.getLogger().log(
+                            Level.SEVERE,
+                            "Failed to save DreamRPG player experience for " + player.getName() + ": "
+                                    + LibApi.rootCauseMessage(failure),
+                            failure
+                    );
+                }
+                experience.release(uniqueId);
+            });
+        } else {
+            experience.discard(uniqueId);
+        }
         loadingGate.cancel(player);
         profiles.remove(uniqueId);
         display.remove(player);
@@ -207,11 +234,13 @@ public final class DreamRpgListener implements Listener {
     private void handleDataFailure(Player player, Throwable failure) {
         if (!player.isOnline()) {
             storage.discard(player.getUniqueId());
+            experience.discard(player.getUniqueId());
             profiles.remove(player.getUniqueId());
             return;
         }
         loadingGate.cancel(player);
         storage.discard(player.getUniqueId());
+        experience.discard(player.getUniqueId());
         profiles.remove(player.getUniqueId());
         plugin.getLogger().log(
                 Level.SEVERE,

@@ -30,16 +30,6 @@ public record CareerDefinition(
         }
     }
 
-    /**
-     * Returns the first Minecraft color applied by the prefix.
-     *
-     * @return a section-sign color code, or white when the prefix has no color
-     */
-    public String nameColor() {
-        String color = LegacyText.firstColorCode(prefix);
-        return color.isEmpty() ? "§f" : color;
-    }
-
     private static String normalizeId(String value) {
         String normalized = requireText(value, "id").trim().toLowerCase(Locale.ROOT);
         if (!normalized.matches("[a-z0-9_-]+")) {
@@ -52,5 +42,15 @@ public record CareerDefinition(
         String text = Objects.requireNonNull(value, fieldName);
         if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
         return text;
+    }
+
+    /**
+     * Returns the first Minecraft color applied by the prefix.
+     *
+     * @return a section-sign color code, or white when the prefix has no color
+     */
+    public String nameColor() {
+        String color = LegacyText.firstColorCode(prefix);
+        return color.isEmpty() ? "§f" : color;
     }
 }

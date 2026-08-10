@@ -14,6 +14,14 @@ database:
     use-ssl: false
     server-timezone: "Asia/Shanghai"
 
+experience:
+  max-level: -1
+
+health:
+  enabled: true
+  base-health: 20.0
+  health-per-level: 5.0
+
 spawn:
   world: "world"
   x: 0.5

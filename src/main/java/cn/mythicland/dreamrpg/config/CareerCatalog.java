@@ -6,13 +6,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Immutable career catalog loaded from careers.yml.
@@ -59,6 +53,14 @@ public final class CareerCatalog {
         return new CareerCatalog(definitions);
     }
 
+    private static String requiredString(ConfigurationSection section, String path, String careerId) {
+        Object rawValue = section.get(path);
+        if (!(rawValue instanceof String value) || value.isBlank()) {
+            throw new IllegalStateException("Career " + careerId + " requires a non-empty string: " + path);
+        }
+        return value;
+    }
+
     /**
      * Finds a career by ID.
      *
@@ -96,13 +98,5 @@ public final class CareerCatalog {
      */
     public Collection<CareerDefinition> all() {
         return careers.values();
-    }
-
-    private static String requiredString(ConfigurationSection section, String path, String careerId) {
-        Object rawValue = section.get(path);
-        if (!(rawValue instanceof String value) || value.isBlank()) {
-            throw new IllegalStateException("Career " + careerId + " requires a non-empty string: " + path);
-        }
-        return value;
     }
 }

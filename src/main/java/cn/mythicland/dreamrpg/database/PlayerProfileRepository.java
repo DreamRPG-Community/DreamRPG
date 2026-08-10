@@ -27,7 +27,7 @@ public final class PlayerProfileRepository implements PlayerProfileStore {
     /**
      * Loads a career identifier, creating the default row when necessary.
      *
-     * @param uniqueId       player UUID
+     * @param uniqueId        player UUID
      * @param defaultCareerId configured default career identifier
      * @return persisted or newly created career identifier
      * @throws SQLException when the selected JDBC database rejects the operation

@@ -34,6 +34,15 @@ public final class CareerChangedEvent extends Event {
     }
 
     /**
+     * Returns the static Bukkit handler list.
+     *
+     * @return event handlers
+     */
+    public static HandlerList getHandlerList() {
+        return HANDLERS;
+    }
+
+    /**
      * Returns the profile before the change.
      *
      * @return previous profile
@@ -58,15 +67,6 @@ public final class CareerChangedEvent extends Event {
      */
     @Override
     public HandlerList getHandlers() {
-        return HANDLERS;
-    }
-
-    /**
-     * Returns the static Bukkit handler list.
-     *
-     * @return event handlers
-     */
-    public static HandlerList getHandlerList() {
         return HANDLERS;
     }
 }

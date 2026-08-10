@@ -4,10 +4,10 @@ import cn.mythicland.dreamrpg.api.PlayerProfile;
 import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
 import cn.mythicland.dreamrpg.config.DreamRpgSettings;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
-import cn.mythicland.lib.text.LegacyText;
-import cn.mythicland.lib.text.TemplateRenderer;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.lib.text.LegacyText;
+import cn.mythicland.lib.text.TemplateRenderer;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -34,7 +34,7 @@ public final class DreamRpgChatListener implements Listener {
     /**
      * Creates the chat listener.
      *
-     * @param context initialized DreamRPG context
+     * @param context  initialized DreamRPG context
      * @param profiles profile service
      */
     public DreamRpgChatListener(
@@ -44,6 +44,10 @@ public final class DreamRpgChatListener implements Listener {
         this.context = Objects.requireNonNull(context, "context");
         this.profiles = Objects.requireNonNull(profiles, "profiles");
         this.templates = context.templates();
+    }
+
+    private static String escapeFormat(String renderedFormat) {
+        return renderedFormat.replace("%", "%%").replace(MESSAGE_SLOT, "%2$s");
     }
 
     /**
@@ -76,9 +80,5 @@ public final class DreamRpgChatListener implements Listener {
         }
         String plainMessage = ChatColor.stripColor(LegacyText.colorize(message));
         return ChatColor.WHITE + plainMessage;
-    }
-
-    private static String escapeFormat(String renderedFormat) {
-        return renderedFormat.replace("%", "%%").replace(MESSAGE_SLOT, "%2$s");
     }
 }

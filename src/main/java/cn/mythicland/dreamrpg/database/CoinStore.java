@@ -24,10 +24,10 @@ public interface CoinStore {
      * Applies one signed balance delta atomically.
      *
      * @param uniqueId player UUID
-     * @param delta positive for deposit, negative for withdrawal
+     * @param delta    positive for deposit, negative for withdrawal
      * @return resulting balance
      * @throws InsufficientCoinsException if the delta would make the balance negative
-     * @throws SQLException              when persistence fails
+     * @throws SQLException               when persistence fails
      */
     BigDecimal adjust(UUID uniqueId, BigDecimal delta)
             throws SQLException, InsufficientCoinsException;

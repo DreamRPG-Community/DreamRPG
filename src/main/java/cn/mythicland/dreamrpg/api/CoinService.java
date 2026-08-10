@@ -23,7 +23,7 @@ public interface CoinService {
      * Tests whether the player can spend the requested positive amount.
      *
      * @param uniqueId player UUID
-     * @param amount requested amount
+     * @param amount   requested amount
      * @return whether the current balance covers the amount
      */
     boolean has(UUID uniqueId, BigDecimal amount);
@@ -32,8 +32,8 @@ public interface CoinService {
      * Adds coins atomically and returns the resulting transaction snapshot.
      *
      * @param uniqueId player UUID
-     * @param amount positive amount
-     * @param source business source of the deposit
+     * @param amount   positive amount
+     * @param source   business source of the deposit
      * @return immutable transaction result
      */
     CoinTransaction deposit(UUID uniqueId, BigDecimal amount, String source);
@@ -42,8 +42,8 @@ public interface CoinService {
      * Removes coins atomically.
      *
      * @param uniqueId player UUID
-     * @param amount positive amount
-     * @param source business source of the withdrawal
+     * @param amount   positive amount
+     * @param source   business source of the withdrawal
      * @return immutable transaction result
      * @throws InsufficientCoinsException if the balance cannot cover the amount
      */

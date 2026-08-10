@@ -1,14 +1,16 @@
 package cn.mythicland.dreamrpg.config;
 
+import cn.mythicland.lib.config.ConfigSupport;
+import cn.mythicland.lib.config.ConfigValue;
 import cn.mythicland.lib.text.TemplateRenderer;
 import cn.mythicland.lib.text.TextAnimation;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Immutable settings loaded from the standalone scoreboard.yml file.
@@ -35,40 +37,55 @@ public record ScoreboardSettings(
      */
     public static ScoreboardSettings load(FileConfiguration configuration) {
         Objects.requireNonNull(configuration, "configuration");
-        ConfigurationSection normal = requiredSection(configuration, "normal");
-        ConfigurationSection loading = requiredSection(configuration, "loading");
-        List<String> titleEntries = stringList(normal, "title-animation");
-        if (titleEntries.isEmpty()) {
+        if (configuration.getConfigurationSection("normal") == null) {
+            throw new IllegalStateException("scoreboard.yml requires the normal section");
+        }
+        if (configuration.getConfigurationSection("loading") == null) {
+            throw new IllegalStateException("scoreboard.yml requires the loading section");
+        }
+        return from(ConfigSupport.bind(configuration, RawSettings.class));
+    }
+
+    static ScoreboardSettings bind(FileConfiguration configuration, Consumer<String> warningConsumer) {
+        Objects.requireNonNull(configuration, "configuration");
+        if (configuration.getConfigurationSection("normal") == null) {
+            throw new IllegalStateException("scoreboard.yml requires the normal section");
+        }
+        if (configuration.getConfigurationSection("loading") == null) {
+            throw new IllegalStateException("scoreboard.yml requires the loading section");
+        }
+        return from(ConfigSupport.bind(configuration, RawSettings.class, warningConsumer));
+    }
+
+    private static ScoreboardSettings from(RawSettings raw) {
+        if (raw.titleEntries().isEmpty()) {
             throw new IllegalStateException("scoreboard.yml requires normal.title-animation");
         }
-        TextAnimation titleAnimation = TextAnimation.parse(titleEntries);
-        List<String> lines = stringList(normal, "lines");
-        if (lines.isEmpty()) throw new IllegalStateException("scoreboard.yml requires normal.lines");
-        TextAnimation loadingTitleAnimation = TextAnimation.parse(stringList(loading, "title-animation"));
-        List<String> loadingLines = stringList(loading, "lines");
-        if (loadingLines.isEmpty()) throw new IllegalStateException("scoreboard.yml requires loading.lines");
-        long updateTicks = positiveLong(normal, "update-ticks");
-        long titleUpdateTicks = normal.contains("title-update-ticks")
-                ? positiveLong(normal, "title-update-ticks")
-                : 1L;
-        boolean enabled = booleanValue(normal, "enabled");
-        String zoneName = stringValue(normal, "time-zone");
+        TextAnimation titleAnimation = TextAnimation.parse(raw.titleEntries());
+        if (raw.lines().isEmpty()) throw new IllegalStateException("scoreboard.yml requires normal.lines");
+        TextAnimation loadingTitleAnimation = TextAnimation.parse(raw.loadingTitleEntries());
+        if (raw.loadingLines().isEmpty()) {
+            throw new IllegalStateException("scoreboard.yml requires loading.lines");
+        }
         ZoneId timeZone;
         try {
-            timeZone = ZoneId.of(zoneName);
+            timeZone = ZoneId.of(raw.timeZone());
         } catch (DateTimeException exception) {
-            throw new IllegalStateException("Invalid scoreboard.normal.time-zone: " + zoneName, exception);
+            throw new IllegalStateException(
+                    "Invalid scoreboard.normal.time-zone: " + raw.timeZone(),
+                    exception
+            );
         }
         return new ScoreboardSettings(
                 new NormalSettings(
-                        enabled,
+                        raw.enabled(),
                         titleAnimation,
-                        updateTicks,
-                        titleUpdateTicks,
-                        lines,
+                        raw.updateTicks(),
+                        raw.titleUpdateTicks(),
+                        raw.lines(),
                         timeZone
                 ),
-                new LoadingSettings(loadingTitleAnimation, loadingLines)
+                new LoadingSettings(loadingTitleAnimation, raw.loadingLines())
         );
     }
 
@@ -102,65 +119,15 @@ public record ScoreboardSettings(
                 .anyMatch(frame -> TemplateRenderer.containsPlaceholderApiToken(frame.text()));
     }
 
-    private static ConfigurationSection requiredSection(
-            ConfigurationSection configuration,
-            String path
-    ) {
-        ConfigurationSection section = configuration.getConfigurationSection(path);
-        if (section == null) throw new IllegalStateException("scoreboard.yml requires the " + path + " section");
-        return section;
-    }
-
-    private static List<String> stringList(ConfigurationSection configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (rawValue == null) return List.of();
-        if (!(rawValue instanceof List<?> values)) {
-            throw new IllegalStateException("Configuration requires a string list: " + path);
-        }
-        for (Object value : values) {
-            if (!(value instanceof String)) {
-                throw new IllegalStateException("Configuration requires string list entries: " + path);
-            }
-        }
-        return values.stream().map(String.class::cast).toList();
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static boolean booleanValue(ConfigurationSection configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof Boolean value)) {
-            throw new IllegalStateException("Configuration requires a boolean: " + path);
-        }
-        return value;
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private static String stringValue(ConfigurationSection configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof String value) || value.isBlank()) {
-            throw new IllegalStateException("Configuration requires a non-empty string: " + path);
-        }
-        return value.trim();
-    }
-
-    private static long positiveLong(ConfigurationSection configuration, String path) {
-        Object rawValue = configuration.get(path);
-        if (!(rawValue instanceof Number value) || value.longValue() < 1L) {
-            throw new IllegalStateException("Configuration requires a positive number: " + path);
-        }
-        return value.longValue();
-    }
-
-
     /**
      * Immutable normal-state scoreboard settings.
      *
-     * @param enabled whether normal scoreboards are enabled
-     * @param titleAnimation normal title animation
-     * @param updateTicks sidebar refresh period
+     * @param enabled          whether normal scoreboards are enabled
+     * @param titleAnimation   normal title animation
+     * @param updateTicks      sidebar refresh period
      * @param titleUpdateTicks title animation refresh period
-     * @param lines normal sidebar lines
-     * @param timeZone time zone used by the {@code {time}} placeholder
+     * @param lines            normal sidebar lines
+     * @param timeZone         time zone used by the {@code {time}} placeholder
      */
     public record NormalSettings(
             boolean enabled,
@@ -194,7 +161,7 @@ public record ScoreboardSettings(
      * Immutable loading-state scoreboard settings.
      *
      * @param titleAnimation loading title animation
-     * @param lines loading sidebar lines
+     * @param lines          loading sidebar lines
      */
     public record LoadingSettings(
             TextAnimation titleAnimation,
@@ -209,5 +176,56 @@ public record ScoreboardSettings(
                 throw new IllegalArgumentException("scoreboard.loading.lines cannot exceed 15 entries");
             }
         }
+    }
+
+    private record RawSettings(
+            @ConfigValue(
+                    path = "normal.enabled",
+                    defaultValue = "true"
+            )
+            boolean enabled,
+            @ConfigValue(
+                    path = "normal.title-animation",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> titleEntries,
+            @ConfigValue(
+                    path = "normal.update-ticks",
+                    defaultValue = "20",
+                    positive = true
+            )
+            long updateTicks,
+            @ConfigValue(
+                    path = "normal.title-update-ticks",
+                    defaultValue = "1",
+                    positive = true
+            )
+            long titleUpdateTicks,
+            @ConfigValue(
+                    path = "normal.lines",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> lines,
+            @ConfigValue(
+                    path = "normal.time-zone",
+                    defaultValue = "Asia/Shanghai",
+                    nonBlank = true
+            )
+            String timeZone,
+            @ConfigValue(
+                    path = "loading.title-animation",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> loadingTitleEntries,
+            @ConfigValue(
+                    path = "loading.lines",
+                    defaultValue = "",
+                    trim = false
+            )
+            List<String> loadingLines
+    ) {
     }
 }

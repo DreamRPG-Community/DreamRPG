@@ -15,12 +15,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,6 +30,7 @@ import java.util.logging.Logger;
 public final class PlayerStorageService implements PlayerStorageApi {
 
     private static final long AUTOSAVE_PERIOD_TICKS = 20L;
+    private static final CompletableFuture<Void> COMPLETED_SAVE = CompletableFuture.completedFuture(null);
 
     private final LibApi lib;
     private final PluginTaskScope tasks;
@@ -66,6 +62,10 @@ public final class PlayerStorageService implements PlayerStorageApi {
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
+    private static void ensurePrimaryThread() {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Player storage requires the main thread");
+    }
+
     /**
      * Starts the main-thread autosave loop.
      */
@@ -88,7 +88,8 @@ public final class PlayerStorageService implements PlayerStorageApi {
      */
     public CompletableFuture<PlayerStorageSnapshot> load(UUID uniqueId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
-        if (closed) return CompletableFuture.failedFuture(new IllegalStateException("Player storage service is closed"));
+        if (closed)
+            return CompletableFuture.failedFuture(new IllegalStateException("Player storage service is closed"));
         VersionedPlayerSession<PlayerStorageSnapshot> session = sessions.get(uniqueId);
         if (session != null) return CompletableFuture.completedFuture(session.snapshot());
         CompletableFuture<PlayerStorageSnapshot> existing = loads.get(uniqueId);
@@ -194,13 +195,11 @@ public final class PlayerStorageService implements PlayerStorageApi {
     public CompletableFuture<Void> flush(UUID uniqueId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
         VersionedPlayerSession<PlayerStorageSnapshot> session = sessions.get(uniqueId);
-        if (session == null) return CompletableFuture.completedFuture(null);
+        if (session == null) return COMPLETED_SAVE;
         CompletableFuture<Void> next;
         synchronized (saveChains) {
             CompletableFuture<Void> previous = saveChains.get(uniqueId);
-            CompletableFuture<Void> ready = previous == null
-                    ? CompletableFuture.completedFuture(null)
-                    : previous;
+            CompletableFuture<Void> ready = previous == null ? COMPLETED_SAVE : previous;
             next = ready.thenCompose(ignored -> lib.runAsync(() -> saveUntilClean(session)));
             saveChains.put(uniqueId, next);
         }
@@ -299,9 +298,5 @@ public final class PlayerStorageService implements PlayerStorageApi {
         synchronized (saveChains) {
             saveChains.remove(uniqueId, chain);
         }
-    }
-
-    private static void ensurePrimaryThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Player storage requires the main thread");
     }
 }

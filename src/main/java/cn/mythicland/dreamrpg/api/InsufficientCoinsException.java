@@ -1,7 +1,7 @@
 package cn.mythicland.dreamrpg.api;
 
-import java.math.BigDecimal;
 import java.io.Serial;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -15,9 +15,9 @@ public final class InsufficientCoinsException extends IllegalStateException {
     /**
      * Creates an insufficient-balance failure with the relevant business values.
      *
-     * @param uniqueId player UUID
+     * @param uniqueId  player UUID
      * @param requested requested withdrawal
-     * @param balance current balance
+     * @param balance   current balance
      */
     public InsufficientCoinsException(UUID uniqueId, BigDecimal requested, BigDecimal balance) {
         super("Insufficient DreamRPG coins for " + uniqueId

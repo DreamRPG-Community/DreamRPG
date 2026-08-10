@@ -14,7 +14,7 @@ public interface PlayerProfileStore {
     /**
      * Loads an existing career or creates the supplied default career.
      *
-     * @param uniqueId       player UUID
+     * @param uniqueId        player UUID
      * @param defaultCareerId configured default career
      * @return persisted or created career identifier
      * @throws SQLException when persistence fails

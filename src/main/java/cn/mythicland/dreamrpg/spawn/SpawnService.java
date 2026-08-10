@@ -33,7 +33,8 @@ public final class SpawnService {
     public void reload(DreamRpgSettings.SpawnSettings refreshedSettings) {
         Objects.requireNonNull(refreshedSettings, "refreshedSettings");
         World world = Bukkit.getWorld(refreshedSettings.worldName());
-        if (world == null) throw new IllegalStateException("Main spawn world is unavailable: " + refreshedSettings.worldName());
+        if (world == null)
+            throw new IllegalStateException("Main spawn world is unavailable: " + refreshedSettings.worldName());
         settings = refreshedSettings;
         location = new Location(
                 world,

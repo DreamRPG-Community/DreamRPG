@@ -31,42 +31,6 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
         this.database = Objects.requireNonNull(context, "context").database();
     }
 
-    @Override
-    public PlayerStorageSnapshot loadOrCreate(UUID uniqueId) throws SQLException {
-        Objects.requireNonNull(uniqueId, "uniqueId");
-        return database.transaction(connection -> {
-            PlayerStorageSnapshot existing = select(connection, uniqueId);
-            if (existing != null) return existing;
-            PlayerStorageSnapshot empty = PlayerStorageSnapshot.empty(uniqueId);
-            insert(connection, empty);
-            return empty;
-        });
-    }
-
-    @Override
-    public long save(PlayerStorageSnapshot snapshot, long expectedVersion) throws SQLException {
-        PlayerStorageSnapshot value = Objects.requireNonNull(snapshot, "snapshot");
-        if (expectedVersion < 0L) throw new IllegalArgumentException("expectedVersion cannot be negative");
-        long nextVersion = expectedVersion + 1L;
-        int changedRows = database.transaction(connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(
-                    "UPDATE player_storage SET format_version = ?, inventory_base64 = ?, "
-                            + "armor_base64 = ?, extra_base64 = ?, held_slot = ?, "
-                            + "ender_chest_base64 = ?, ender_chest_page = ?, version = ?, updated_at = ? "
-                            + "WHERE uuid = ? AND version = ?"
-            )) {
-                bindSnapshot(statement, value, nextVersion, 1);
-                statement.setString(10, value.uniqueId().toString());
-                statement.setLong(11, expectedVersion);
-                return statement.executeUpdate();
-            }
-        });
-        if (changedRows != 1) {
-            throw new SQLException("Player storage version conflict: " + value.uniqueId());
-        }
-        return nextVersion;
-    }
-
     private static PlayerStorageSnapshot select(Connection connection, UUID uniqueId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 "SELECT format_version, inventory_base64, armor_base64, extra_base64, held_slot, "
@@ -142,5 +106,41 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
         statement.setInt(offset + 6, snapshot.enderChestPage());
         statement.setLong(offset + 7, version);
         statement.setLong(offset + 8, System.currentTimeMillis());
+    }
+
+    @Override
+    public PlayerStorageSnapshot loadOrCreate(UUID uniqueId) throws SQLException {
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        return database.transaction(connection -> {
+            PlayerStorageSnapshot existing = select(connection, uniqueId);
+            if (existing != null) return existing;
+            PlayerStorageSnapshot empty = PlayerStorageSnapshot.empty(uniqueId);
+            insert(connection, empty);
+            return empty;
+        });
+    }
+
+    @Override
+    public long save(PlayerStorageSnapshot snapshot, long expectedVersion) throws SQLException {
+        PlayerStorageSnapshot value = Objects.requireNonNull(snapshot, "snapshot");
+        if (expectedVersion < 0L) throw new IllegalArgumentException("expectedVersion cannot be negative");
+        long nextVersion = expectedVersion + 1L;
+        int changedRows = database.transaction(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE player_storage SET format_version = ?, inventory_base64 = ?, "
+                            + "armor_base64 = ?, extra_base64 = ?, held_slot = ?, "
+                            + "ender_chest_base64 = ?, ender_chest_page = ?, version = ?, updated_at = ? "
+                            + "WHERE uuid = ? AND version = ?"
+            )) {
+                bindSnapshot(statement, value, nextVersion, 1);
+                statement.setString(10, value.uniqueId().toString());
+                statement.setLong(11, expectedVersion);
+                return statement.executeUpdate();
+            }
+        });
+        if (changedRows != 1) {
+            throw new SQLException("Player storage version conflict: " + value.uniqueId());
+        }
+        return nextVersion;
     }
 }
