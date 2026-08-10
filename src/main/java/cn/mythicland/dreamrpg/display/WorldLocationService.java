@@ -50,7 +50,7 @@ public final class WorldLocationService {
      */
     public void requireAvailable() {
         requireWorldManagerAvailable("{location}");
-        if (!ensureWorldRegion()) {
+        if (worldRegionUnavailable()) {
             throw new IllegalStateException("WorldRegion service is required by scoreboard {location}");
         }
     }
@@ -84,7 +84,7 @@ public final class WorldLocationService {
      */
     public String worldName(World world) {
         World targetWorld = Objects.requireNonNull(world, "world");
-        if (!ensureWorldManager()) throw new IllegalStateException("WorldManager service is unavailable");
+        if (worldManagerUnavailable()) throw new IllegalStateException("WorldManager service is unavailable");
         try {
             Object result = findLogicalName.invoke(worldManager, targetWorld);
             if (!(result instanceof Optional<?> optional)) {
@@ -101,7 +101,7 @@ public final class WorldLocationService {
     }
 
     private Optional<String> regionName(Location location) {
-        if (!ensureWorldRegion()) throw new IllegalStateException("WorldRegion service is unavailable");
+        if (worldRegionUnavailable()) throw new IllegalStateException("WorldRegion service is unavailable");
         try {
             Object result = findRegion.invoke(worldRegion, location);
             if (!(result instanceof Optional<?> optional)) {
@@ -119,30 +119,30 @@ public final class WorldLocationService {
         }
     }
 
-    private boolean ensureWorldManager() {
-        if (worldManager != null && findLogicalName != null) return true;
-        if (worldManagerLookupFailed) return false;
+    private boolean worldManagerUnavailable() {
+        if (worldManager != null && findLogicalName != null) return false;
+        if (worldManagerLookupFailed) return true;
         Plugin plugin = this.plugin.getServer().getPluginManager().getPlugin(WORLD_MANAGER_NAME);
-        if (plugin == null || !plugin.isEnabled()) return false;
+        if (plugin == null || !plugin.isEnabled()) return true;
         try {
             Class<?> apiType = Class.forName(WORLD_MANAGER_API, true, plugin.getClass().getClassLoader());
             RegisteredServiceProvider<?> registration = registration(apiType);
             if (registration == null || registration.getProvider() == null) return false;
             worldManager = registration.getProvider();
             findLogicalName = apiType.getMethod("findLogicalName", World.class);
-            return true;
+            return false;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             worldManagerLookupFailed = true;
             logFailure("WorldManager", exception, true);
-            return false;
+            return true;
         }
     }
 
-    private boolean ensureWorldRegion() {
-        if (worldRegion != null && findRegion != null && regionDisplayName != null) return true;
-        if (worldRegionLookupFailed) return false;
+    private boolean worldRegionUnavailable() {
+        if (worldRegion != null && findRegion != null && regionDisplayName != null) return false;
+        if (worldRegionLookupFailed) return true;
         Plugin plugin = this.plugin.getServer().getPluginManager().getPlugin(WORLD_REGION_NAME);
-        if (plugin == null || !plugin.isEnabled()) return false;
+        if (plugin == null || !plugin.isEnabled()) return true;
         try {
             Class<?> apiType = Class.forName(WORLD_REGION_API, true, plugin.getClass().getClassLoader());
             RegisteredServiceProvider<?> registration = registration(apiType);
@@ -155,11 +155,11 @@ public final class WorldLocationService {
                     plugin.getClass().getClassLoader()
             );
             regionDisplayName = regionType.getMethod("displayName");
-            return true;
+            return false;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             worldRegionLookupFailed = true;
             logFailure("WorldRegion", exception, false);
-            return false;
+            return true;
         }
     }
 
@@ -181,7 +181,7 @@ public final class WorldLocationService {
     }
 
     private void requireWorldManagerAvailable(String placeholder) {
-        if (!ensureWorldManager()) {
+        if (worldManagerUnavailable()) {
             throw new IllegalStateException("WorldManager service is required by scoreboard " + placeholder);
         }
     }

@@ -19,6 +19,7 @@ public final class DreamRpgPlugin extends JavaPlugin {
      * Starts the Lib-managed DreamRPG component graph.
      */
     @Override
+    @SuppressWarnings("resource")
     public void onEnable() {
         try {
             LibApi lib = LibApi.require(this);

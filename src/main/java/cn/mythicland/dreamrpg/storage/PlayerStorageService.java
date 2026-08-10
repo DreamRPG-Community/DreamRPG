@@ -4,6 +4,7 @@ import cn.mythicland.dreamrpg.api.PlayerStorageApi;
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.database.PlayerStorageStore;
 import cn.mythicland.lib.api.LibApi;
+import cn.mythicland.lib.bootstrap.PluginTaskScope;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
 import cn.mythicland.lib.storage.VersionedPlayerSession;
@@ -36,6 +37,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
     private static final long AUTOSAVE_PERIOD_TICKS = 20L;
 
     private final LibApi lib;
+    private final PluginTaskScope tasks;
     private final PlayerStorageStore store;
     private final Logger logger;
     private final Map<UUID, VersionedPlayerSession<PlayerStorageSnapshot>> sessions = new ConcurrentHashMap<>();
@@ -48,15 +50,18 @@ public final class PlayerStorageService implements PlayerStorageApi {
      * Creates the player storage coordinator.
      *
      * @param lib    shared Lib service
+     * @param tasks  plugin-owned task scope
      * @param store  database storage adapter
      * @param logger persistence logger
      */
     public PlayerStorageService(
             LibApi lib,
+            PluginTaskScope tasks,
             PlayerStorageStore store,
             Logger logger
     ) {
         this.lib = Objects.requireNonNull(lib, "lib");
+        this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.store = Objects.requireNonNull(store, "store");
         this.logger = Objects.requireNonNull(logger, "logger");
     }
@@ -68,7 +73,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
         ensurePrimaryThread();
         if (closed) throw new IllegalStateException("Player storage service is closed");
         if (autosaveTask != null) return;
-        autosaveTask = lib.runTimer(
+        autosaveTask = tasks.runTimer(
                 AUTOSAVE_PERIOD_TICKS,
                 AUTOSAVE_PERIOD_TICKS,
                 this::captureOnlinePlayersAndFlush
@@ -239,7 +244,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
     public void close() {
         ensurePrimaryThread();
         if (closed) return;
-        if (autosaveTask != null) autosaveTask.cancel();
+        tasks.cancel(autosaveTask);
         autosaveTask = null;
         for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers())) {
             if (isLoaded(player.getUniqueId())) capture(player);

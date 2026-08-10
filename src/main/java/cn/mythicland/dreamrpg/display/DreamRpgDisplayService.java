@@ -97,6 +97,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
     /**
      * Refreshes all online viewers, sidebar lines, and player teams.
      */
+    @SuppressWarnings("resource")
     public void refreshAll() {
         ensureMainThread();
         List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
@@ -355,7 +356,7 @@ public final class DreamRpgDisplayService implements AutoCloseable {
             );
         }
         String truncated = value.substring(0, 16);
-        if (truncated.endsWith("\u00a7")) {
+        if (truncated.endsWith("§")) {
             truncated = truncated.substring(0, truncated.length() - 1);
         }
         return truncated;
@@ -405,6 +406,12 @@ public final class DreamRpgDisplayService implements AutoCloseable {
                     "time",
                     ZonedDateTime.now(settings.normal().timeZone()).format(CLOCK_FORMATTER)
             );
+        }
+        if (template.contains("{location}")) {
+            values.put("location", locations.resolve(viewer));
+        }
+        if (template.contains("{world}")) {
+            values.put("world", locations.worldName(viewer.getWorld()));
         }
         return values;
     }

@@ -4,7 +4,6 @@ import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.lib.container.ContainerAnimationHandle;
 import cn.mythicland.lib.container.ContainerAnimationService;
 import cn.mythicland.lib.container.ContainerAnimationSpec;
 import cn.mythicland.lib.loading.PlayerLoadingGate;
@@ -19,7 +18,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
@@ -79,7 +77,10 @@ public final class EnderChestService implements Listener, AutoCloseable {
         open(player, null);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(
+            priority = EventPriority.HIGHEST,
+            ignoreCancelled = true
+    )
     public void onRightClick(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         Block block = event.getClickedBlock();
@@ -88,7 +89,10 @@ public final class EnderChestService implements Listener, AutoCloseable {
         open(event.getPlayer(), block);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(
+            priority = EventPriority.HIGHEST,
+            ignoreCancelled = true
+    )
     public void onTeleport(PlayerTeleportEvent event) {
         if (openMenus.containsKey(event.getPlayer().getUniqueId())) menus.close(event.getPlayer());
     }
@@ -121,7 +125,6 @@ public final class EnderChestService implements Listener, AutoCloseable {
                 player.getUniqueId(),
                 storage,
                 snapshot,
-                null,
                 localSound,
                 () -> openMenus.remove(player.getUniqueId())
         );

@@ -26,6 +26,7 @@ public record RuntimeLibraryManifest(
     /**
      * Validates the SQLite manifest entry.
      */
+    @SuppressWarnings("DataFlowIssue")
     public RuntimeLibraryManifest {
         sqlite = Objects.requireNonNull(sqlite, "sqlite");
         driverClassName = Objects.requireNonNull(driverClassName, "driverClassName").trim();

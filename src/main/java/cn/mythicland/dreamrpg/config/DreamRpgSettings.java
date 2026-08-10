@@ -24,6 +24,7 @@ public record DreamRpgSettings(
     /**
      * Validates grouped settings.
      */
+    @SuppressWarnings("DataFlowIssue")
     public DreamRpgSettings {
         libraryRepository = Objects.requireNonNull(libraryRepository, "libraryRepository");
         database = Objects.requireNonNull(database, "database");
@@ -93,6 +94,7 @@ public record DreamRpgSettings(
         /**
          * Validates database settings.
          */
+        @SuppressWarnings("DataFlowIssue")
         public DatabaseSettings {
             mode = Objects.requireNonNull(mode, "mode");
             sqlite = Objects.requireNonNull(sqlite, "sqlite");
@@ -282,6 +284,7 @@ public record DreamRpgSettings(
         /**
          * Validates display settings.
          */
+        @SuppressWarnings("DataFlowIssue")
         public DisplaySettings {
             tab = Objects.requireNonNull(tab, "tab");
             nameTagFormat = requireTemplate(nameTagFormat, "display.name-tag-format");
@@ -376,6 +379,7 @@ public record DreamRpgSettings(
         return template;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static void requireSingleNameSlot(String template, String path) {
         String slot = "{name}";
         int first = template.indexOf(slot);
@@ -384,6 +388,7 @@ public record DreamRpgSettings(
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String optionalPassword(FileConfiguration configuration, String path) {
         Object rawValue = configuration.get(path);
         if (rawValue == null) return "";
@@ -399,6 +404,7 @@ public record DreamRpgSettings(
         return value;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static boolean optionalBoolean(FileConfiguration configuration, String path, boolean defaultValue) {
         Object rawValue = configuration.get(path);
         if (rawValue == null) return defaultValue;
@@ -406,6 +412,7 @@ public record DreamRpgSettings(
         return value;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static int optionalInt(FileConfiguration configuration, String path, int defaultValue) {
         Object rawValue = configuration.get(path);
         if (rawValue == null) return defaultValue;
@@ -432,6 +439,7 @@ public record DreamRpgSettings(
         return value.doubleValue();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String requireFileName(String value, String fieldName) {
         String fileName = Objects.requireNonNull(value, fieldName).trim();
         if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {

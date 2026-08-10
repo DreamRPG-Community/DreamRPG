@@ -17,7 +17,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
@@ -150,9 +149,8 @@ public final class VaultEconomyProvider implements Listener {
         );
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private void unregisterService(Class<?> serviceType, Object service) {
-        plugin.getServer().getServicesManager().unregister((Class) serviceType, service);
+        plugin.getServer().getServicesManager().unregister(serviceType, service);
     }
 
     private static final class EconomyInvocationHandler implements InvocationHandler {
@@ -204,6 +202,7 @@ public final class VaultEconomyProvider implements Listener {
             };
         }
 
+        @SuppressWarnings("SameReturnValue")
         private boolean createAccount(Object[] arguments) {
             coins.balance(account(arguments));
             return true;
@@ -312,6 +311,7 @@ public final class VaultEconomyProvider implements Listener {
             return create(amount, balance, "FAILURE", message);
         }
 
+        @SuppressWarnings("SameParameterValue")
         private Object notImplemented(String message) {
             return create(0.0D, 0.0D, "NOT_IMPLEMENTED", message);
         }

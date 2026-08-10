@@ -34,16 +34,16 @@ public record CoinTransaction(
     public CoinTransaction {
         Objects.requireNonNull(uniqueId, "uniqueId");
         Objects.requireNonNull(type, "type");
-        amount = normalizeAmount(amount, "amount");
+        amount = normalizeAmount(amount);
         balance = normalizeBalance(balance);
         source = requireSource(source);
     }
 
-    private static BigDecimal normalizeAmount(BigDecimal value, String name) {
-        BigDecimal normalized = scale(Objects.requireNonNull(value, name), name);
-        if (normalized.signum() <= 0) throw new IllegalArgumentException(name + " must be positive");
+    private static BigDecimal normalizeAmount(BigDecimal value) {
+        BigDecimal normalized = scale(Objects.requireNonNull(value, "amount"), "amount");
+        if (normalized.signum() <= 0) throw new IllegalArgumentException("amount must be positive");
         if (normalized.compareTo(CoinValues.MAXIMUM) > 0) {
-            throw new IllegalArgumentException(name + " exceeds the maximum coin amount");
+            throw new IllegalArgumentException("amount exceeds the maximum coin amount");
         }
         return normalized;
     }

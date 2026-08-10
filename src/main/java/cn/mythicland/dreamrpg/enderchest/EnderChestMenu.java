@@ -37,7 +37,6 @@ final class EnderChestMenu implements StatefulMenuView {
             UUID uniqueId,
             PlayerStorageService storage,
             PlayerStorageSnapshot snapshot,
-            ContainerAnimationHandle animation,
             boolean localSound,
             Runnable closeCallback
     ) {
@@ -45,7 +44,7 @@ final class EnderChestMenu implements StatefulMenuView {
         this.storage = Objects.requireNonNull(storage, "storage");
         PlayerStorageSnapshot value = Objects.requireNonNull(snapshot, "snapshot");
         this.initialContents = value.enderChest();
-        this.animation = animation;
+        this.animation = null;
         this.soundSpecification = ContainerAnimationSpec.enderChest();
         this.localSound = localSound;
         this.closeCallback = Objects.requireNonNull(closeCallback, "closeCallback");

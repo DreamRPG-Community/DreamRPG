@@ -19,6 +19,7 @@ public record PlayerProfile(
     /**
      * Validates that the resolved definition matches the persisted identifier.
      */
+    @SuppressWarnings("DataFlowIssue")
     public PlayerProfile {
         uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
         careerId = Objects.requireNonNull(careerId, "careerId").trim();

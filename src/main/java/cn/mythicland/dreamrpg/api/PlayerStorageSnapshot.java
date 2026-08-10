@@ -38,6 +38,7 @@ public record PlayerStorageSnapshot(
     /**
      * Validates and detaches all mutable Bukkit item values.
      */
+    @SuppressWarnings("DataFlowIssue")
     public PlayerStorageSnapshot {
         uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
         inventory = copyItems(inventory, INVENTORY_SIZE, "inventory");

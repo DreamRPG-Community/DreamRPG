@@ -8,6 +8,7 @@ import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
 import cn.mythicland.lib.api.LibApi;
+import cn.mythicland.lib.bootstrap.PluginTaskScope;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
 import cn.mythicland.lib.loading.PlayerLoadingGate;
@@ -35,6 +36,7 @@ public final class DreamRpgListener implements Listener {
 
     private final JavaPlugin plugin;
     private final LibApi lib;
+    private final PluginTaskScope tasks;
     private final PlayerProfileService profiles;
     private final SpawnService spawnService;
     private final DreamRpgDisplayService display;
@@ -46,6 +48,7 @@ public final class DreamRpgListener implements Listener {
      * Creates the main player lifecycle listener.
      *
      * @param plugin owning plugin
+     * @param tasks plugin-owned task scope
      * @param context initialized DreamRPG context
      * @param profiles profile service
      * @param display display service
@@ -54,6 +57,7 @@ public final class DreamRpgListener implements Listener {
      */
     public DreamRpgListener(
             JavaPlugin plugin,
+            PluginTaskScope tasks,
             DreamRpgContext context,
             PlayerProfileService profiles,
             DreamRpgDisplayService display,
@@ -61,6 +65,7 @@ public final class DreamRpgListener implements Listener {
             PlayerLoadingGate loadingGate
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
+        this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.context = Objects.requireNonNull(context, "context");
         this.lib = context.lib();
         this.profiles = Objects.requireNonNull(profiles, "profiles");
@@ -90,7 +95,7 @@ public final class DreamRpgListener implements Listener {
     public void loadPlayerData(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (context.settings().spawn().teleportOnJoin()) {
-            lib.runLater(1L, () -> {
+            tasks.runLater(1L, () -> {
                 if (player.isOnline()) spawnService.teleport(player);
             });
         }

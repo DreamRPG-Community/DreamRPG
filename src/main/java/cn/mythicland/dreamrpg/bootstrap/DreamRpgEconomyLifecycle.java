@@ -2,14 +2,14 @@ package cn.mythicland.dreamrpg.bootstrap;
 
 import cn.mythicland.dreamrpg.economy.VaultEconomyProvider;
 import cn.mythicland.lib.bootstrap.LibPluginLifecycle;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.lib.bootstrap.annotation.LifecycleComponent;
 
 import java.util.Objects;
 
 /**
  * Owns Vault economy registration for the DreamRPG coin ledger.
  */
-@InjectComponent
+@LifecycleComponent
 public final class DreamRpgEconomyLifecycle implements LibPluginLifecycle {
 
     private final VaultEconomyProvider provider;

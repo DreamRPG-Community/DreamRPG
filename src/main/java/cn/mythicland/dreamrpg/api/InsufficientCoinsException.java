@@ -1,6 +1,7 @@
 package cn.mythicland.dreamrpg.api;
 
 import java.math.BigDecimal;
+import java.io.Serial;
 import java.util.UUID;
 
 /**
@@ -8,6 +9,7 @@ import java.util.UUID;
  */
 public final class InsufficientCoinsException extends IllegalStateException {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**

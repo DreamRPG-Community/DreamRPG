@@ -2,7 +2,6 @@ package cn.mythicland.dreamrpg.economy;
 
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.CoinTransaction;
-import cn.mythicland.dreamrpg.api.InsufficientCoinsException;
 import cn.mythicland.dreamrpg.database.CoinStore;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
@@ -45,7 +44,7 @@ public final class CoinAccountService implements CoinService {
 
     @Override
     public boolean has(UUID uniqueId, BigDecimal amount) {
-        BigDecimal normalizedAmount = validateAmount(uniqueId, amount, "has");
+        BigDecimal normalizedAmount = validateAmount(uniqueId, amount);
         return balance(uniqueId).compareTo(normalizedAmount) >= 0;
     }
 
@@ -95,8 +94,8 @@ public final class CoinAccountService implements CoinService {
         return new CoinTransaction(uniqueId, type, amount, ZERO, source);
     }
 
-    private static BigDecimal validateAmount(UUID uniqueId, BigDecimal amount, String source) {
-        return validateRequest(uniqueId, CoinTransaction.Type.WITHDRAW, amount, source).amount();
+    private static BigDecimal validateAmount(UUID uniqueId, BigDecimal amount) {
+        return validateRequest(uniqueId, CoinTransaction.Type.WITHDRAW, amount, "has").amount();
     }
 
     private Object lockFor(UUID uniqueId) {

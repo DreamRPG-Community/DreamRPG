@@ -6,7 +6,6 @@ import cn.mythicland.dreamrpg.database.CoinStore;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -61,7 +60,7 @@ class CoinAccountServiceTest {
         @Override
         public BigDecimal adjust(UUID uniqueId, BigDecimal delta) throws InsufficientCoinsException {
             BigDecimal current = loadOrCreate(uniqueId);
-            BigDecimal next = current.add(delta).setScale(2);
+            BigDecimal next = current.add(delta);
             if (next.signum() < 0) {
                 throw new InsufficientCoinsException(uniqueId, delta.negate(), current);
             }

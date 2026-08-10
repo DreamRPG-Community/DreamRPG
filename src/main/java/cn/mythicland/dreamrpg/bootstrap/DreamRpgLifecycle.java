@@ -5,7 +5,8 @@ import cn.mythicland.dreamrpg.enderchest.EnderChestService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
 import cn.mythicland.lib.bootstrap.LibPluginLifecycle;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.lib.bootstrap.PluginTaskScope;
+import cn.mythicland.lib.bootstrap.annotation.LifecycleComponent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -14,10 +15,11 @@ import java.util.Objects;
 /**
  * Owns the mutable DreamRPG lifecycle after Lib has injected every component.
  */
-@InjectComponent
+@LifecycleComponent
 public final class DreamRpgLifecycle implements LibPluginLifecycle {
 
     private final JavaPlugin plugin;
+    private final PluginTaskScope tasks;
     private final DreamRpgContext context;
     private final PlayerProfileService profiles;
     private final DreamRpgDisplayService display;
@@ -38,6 +40,7 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
      */
     public DreamRpgLifecycle(
             JavaPlugin plugin,
+            PluginTaskScope tasks,
             DreamRpgContext context,
             PlayerProfileService profiles,
             DreamRpgDisplayService display,
@@ -45,6 +48,7 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
             EnderChestService enderChest
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
+        this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.context = Objects.requireNonNull(context, "context");
         this.profiles = Objects.requireNonNull(profiles, "profiles");
         this.display = Objects.requireNonNull(display, "display");
@@ -80,8 +84,8 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
      */
     @Override
     public void disable() {
-        if (scoreboardTask != null) scoreboardTask.cancel();
-        if (titleTask != null) titleTask.cancel();
+        tasks.cancel(scoreboardTask);
+        tasks.cancel(titleTask);
         scoreboardTask = null;
         titleTask = null;
         RuntimeException failure = null;
@@ -107,17 +111,17 @@ public final class DreamRpgLifecycle implements LibPluginLifecycle {
     }
 
     private void restartDisplayTasks() {
-        if (scoreboardTask != null) scoreboardTask.cancel();
-        if (titleTask != null) titleTask.cancel();
+        tasks.cancel(scoreboardTask);
+        tasks.cancel(titleTask);
         scoreboardTask = null;
         titleTask = null;
         if (!context.scoreboard().normal().enabled()) return;
-        scoreboardTask = context.lib().runTimer(
+        scoreboardTask = tasks.runTimer(
                 1L,
                 context.scoreboard().normal().updateTicks(),
                 display::refreshAll
         );
-        titleTask = context.lib().runTimer(
+        titleTask = tasks.runTimer(
                 1L,
                 context.scoreboard().normal().titleUpdateTicks(),
                 display::advanceTitle

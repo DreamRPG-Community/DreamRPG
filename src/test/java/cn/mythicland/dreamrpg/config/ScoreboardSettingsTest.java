@@ -36,6 +36,17 @@ class ScoreboardSettingsTest {
     }
 
     @Test
+    void loadingStateNativePlaceholdersAreDetected() {
+        YamlConfiguration configuration = configuration();
+        configuration.set("normal.lines", List.of("{time}"));
+        configuration.set("loading.lines", List.of("位置: {location}"));
+
+        ScoreboardSettings settings = ScoreboardSettings.load(configuration);
+
+        assertTrue(settings.containsNativePlaceholder("location"));
+    }
+
+    @Test
     void missingNormalSectionFailsExplicitly() {
         YamlConfiguration configuration = configuration();
         configuration.set("normal", null);

@@ -51,7 +51,10 @@ public final class DreamRpgChatListener implements Listener {
      *
      * @param event asynchronous chat event
      */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(
+            priority = EventPriority.HIGHEST,
+            ignoreCancelled = true
+    )
     public void onAsyncChat(AsyncPlayerChatEvent event) {
         PlayerProfile profile = profiles.getProfile(event.getPlayer().getUniqueId());
         Map<String, Object> values = new LinkedHashMap<>();

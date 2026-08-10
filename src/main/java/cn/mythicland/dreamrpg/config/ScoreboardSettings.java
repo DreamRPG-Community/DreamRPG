@@ -21,6 +21,7 @@ public record ScoreboardSettings(
     /**
      * Validates scoreboard settings.
      */
+    @SuppressWarnings("DataFlowIssue")
     public ScoreboardSettings {
         normal = Objects.requireNonNull(normal, "normal");
         loading = Objects.requireNonNull(loading, "loading");
@@ -47,7 +48,9 @@ public record ScoreboardSettings(
         List<String> loadingLines = stringList(loading, "lines");
         if (loadingLines.isEmpty()) throw new IllegalStateException("scoreboard.yml requires loading.lines");
         long updateTicks = positiveLong(normal, "update-ticks");
-        long titleUpdateTicks = positiveLongOrDefault(normal, "title-update-ticks", 1L);
+        long titleUpdateTicks = normal.contains("title-update-ticks")
+                ? positiveLong(normal, "title-update-ticks")
+                : 1L;
         boolean enabled = booleanValue(normal, "enabled");
         String zoneName = stringValue(normal, "time-zone");
         ZoneId timeZone;
@@ -79,6 +82,9 @@ public record ScoreboardSettings(
         String token = "{" + Objects.requireNonNull(placeholderName, "placeholderName") + "}";
         return normal.lines().stream().anyMatch(line -> line.contains(token))
                 || normal.titleAnimation().frames().stream()
+                .anyMatch(frame -> frame.text().contains(token))
+                || loading.lines().stream().anyMatch(line -> line.contains(token))
+                || loading.titleAnimation().frames().stream()
                 .anyMatch(frame -> frame.text().contains(token));
     }
 
@@ -119,6 +125,7 @@ public record ScoreboardSettings(
         return values.stream().map(String.class::cast).toList();
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static boolean booleanValue(ConfigurationSection configuration, String path) {
         Object rawValue = configuration.get(path);
         if (!(rawValue instanceof Boolean value)) {
@@ -127,6 +134,7 @@ public record ScoreboardSettings(
         return value;
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static String stringValue(ConfigurationSection configuration, String path) {
         Object rawValue = configuration.get(path);
         if (!(rawValue instanceof String value) || value.isBlank()) {
@@ -143,14 +151,6 @@ public record ScoreboardSettings(
         return value.longValue();
     }
 
-    private static long positiveLongOrDefault(
-            ConfigurationSection configuration,
-            String path,
-            long defaultValue
-    ) {
-        if (!configuration.contains(path)) return defaultValue;
-        return positiveLong(configuration, path);
-    }
 
     /**
      * Immutable normal-state scoreboard settings.
@@ -171,6 +171,7 @@ public record ScoreboardSettings(
             ZoneId timeZone
     ) {
 
+        @SuppressWarnings("DataFlowIssue")
         public NormalSettings {
             titleAnimation = Objects.requireNonNull(titleAnimation, "titleAnimation");
             lines = List.copyOf(Objects.requireNonNull(lines, "lines"));
@@ -200,6 +201,7 @@ public record ScoreboardSettings(
             List<String> lines
     ) {
 
+        @SuppressWarnings("DataFlowIssue")
         public LoadingSettings {
             titleAnimation = Objects.requireNonNull(titleAnimation, "titleAnimation");
             lines = List.copyOf(Objects.requireNonNull(lines, "lines"));
