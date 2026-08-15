@@ -1,5 +1,7 @@
 package cn.mythicland.dreamrpg.health;
 
+import cn.mythicland.dreamrpg.api.HealthApi;
+import cn.mythicland.dreamrpg.api.HealthSnapshot;
 import cn.mythicland.dreamrpg.config.ExperienceConfiguration;
 import cn.mythicland.dreamrpg.config.ExperienceSettings;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
@@ -8,6 +10,7 @@ import cn.mythicland.dreamrpg.experience.ExperienceService;
 import cn.mythicland.lib.bootstrap.PluginTaskScope;
 import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
 import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,6 +20,8 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,7 +30,8 @@ import java.util.logging.Logger;
  */
 @InjectComponent
 @ListenerComponent
-public final class HealthProgressionService implements Listener {
+@ServiceComponent(HealthApi.class)
+public final class HealthProgressionService implements Listener, HealthApi {
 
     private final ExperienceService experience;
     private final ExperienceConfiguration configuration;
@@ -100,6 +106,29 @@ public final class HealthProgressionService implements Listener {
                     exception
             );
         }
+    }
+
+    /**
+     * Returns the configured health progression for a ready player.
+     *
+     * @param uniqueId player UUID
+     * @return immutable health snapshot when the experience data is ready
+     */
+    @Override
+    public Optional<HealthSnapshot> snapshot(UUID uniqueId) {
+        UUID id = Objects.requireNonNull(uniqueId, "uniqueId");
+        if (!experience.isReady(id)) return Optional.empty();
+        ExperienceSettings settings = configuration.snapshot();
+        long level = experience.snapshot(id).level();
+        double maximumHealth = HealthProgression.maximumHealth(settings, level);
+        return Optional.of(new HealthSnapshot(
+                id,
+                level,
+                settings.baseHealth(),
+                maximumHealth - settings.baseHealth(),
+                maximumHealth,
+                settings.healthEnabled()
+        ));
     }
 
     /**

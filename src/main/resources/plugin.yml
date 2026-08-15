@@ -4,7 +4,7 @@ main: cn.mythicland.dreamrpg.DreamRpgPlugin
 author: ShanguanLinG
 load: POSTWORLD
 depend: [ Lib ]
-softdepend: [ PlaceholderAPI, Essentials, EssentialsSpawn, Vault, PlayerPoints, WorldManager, WorldRegion ]
+softdepend: [ PlaceholderAPI, Essentials, EssentialsSpawn, Vault, PlayerPoints, WorldManager, WorldRegion, ViaVersion, ViaBackwards, ViaRewind ]
 loadbefore: [ QuickShop ]
 description: Shared RPG foundation for the DreamRPG server.
 
