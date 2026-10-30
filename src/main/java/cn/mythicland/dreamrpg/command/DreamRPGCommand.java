@@ -5,6 +5,8 @@ import cn.mythicland.dreamrpgcombat.command.CombatStatsDisplay;
 import cn.mythicland.dreamrpg.campaign.CampaignCatalog;
 import cn.mythicland.dreamrpg.exchange.ItemExchangeService;
 import cn.mythicland.dreamrpg.campaign.CampaignMenus;
+import cn.mythicland.dreamrpg.mob.MythicMobMenu;
+import cn.mythicland.dreamrpg.mob.MythicMobService;
 import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.starter.FirstJoinRewardService;
 import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
@@ -30,6 +32,7 @@ public final class DreamRPGCommand extends ItemCommands {
     private final FirstJoinRewardService firstJoinRewards;
     private final CampaignCatalog catalog;
     private final ItemExchangeService exchanges;
+    private final MythicMobService mobService;
 
     public DreamRPGCommand(
             DreamRPGPlugin plugin,
@@ -37,12 +40,14 @@ public final class DreamRPGCommand extends ItemCommands {
             DreamLibApi lib,
             CampaignCatalog catalog,
             ItemExchangeService exchanges,
-            CampaignMenus campaign
+            CampaignMenus campaign,
+            MythicMobService mobService
     ) {
         super(plugin, lib, campaign);
         this.catalog = catalog;
         this.exchanges = exchanges;
         this.firstJoinRewards = Objects.requireNonNull(firstJoinRewards, "firstJoinRewards");
+        this.mobService = Objects.requireNonNull(mobService, "mobService");
     }
 
     void npc(CommandContext context) {
@@ -100,6 +105,12 @@ public final class DreamRPGCommand extends ItemCommands {
     @CommandHandler(value = "admin first-rewards", permission = "dreamrpg.admin")
     void adminFirstRewards(CommandContext context) {
         firstRewards(context);
+    }
+
+    @CommandHandler(value = "mobs", permission = "dreamrpg.admin")
+    void mobs(CommandContext context) {
+        context.requireArguments(0);
+        new MythicMobMenu(mobService).open(player(context), lib.menuService());
     }
 
     @CommandHandler(
