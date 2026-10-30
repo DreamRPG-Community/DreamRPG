@@ -1,0 +1,5 @@
+# Ordered chapters containing item-submission tasks only.
+# Each task contains npc, requires (item/amount list), and reward (item/amount).
+# Display names, lore and item attributes remain in the RPG item library.
+version: 2
+stages: {}

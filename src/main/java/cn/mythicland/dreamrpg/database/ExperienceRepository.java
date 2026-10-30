@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.database;
 
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.experience.ExperienceState;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.database.SqlDatabase;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.database.SqlDatabase;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -26,7 +26,7 @@ public final class ExperienceRepository implements ExperienceStore {
      *
      * @param context initialized DreamRPG context
      */
-    public ExperienceRepository(DreamRpgContext context) {
+    public ExperienceRepository(DreamRPGContext context) {
         this.database = Objects.requireNonNull(context, "context").database();
     }
 

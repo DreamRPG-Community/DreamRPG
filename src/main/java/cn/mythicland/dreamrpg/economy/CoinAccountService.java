@@ -3,8 +3,8 @@ package cn.mythicland.dreamrpg.economy;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.CoinTransaction;
 import cn.mythicland.dreamrpg.database.CoinStore;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;

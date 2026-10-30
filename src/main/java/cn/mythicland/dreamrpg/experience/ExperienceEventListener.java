@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.experience;
 
 import cn.mythicland.dreamrpg.api.ExperienceGrantRequest;
-import cn.mythicland.lib.bootstrap.PluginTaskScope;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;

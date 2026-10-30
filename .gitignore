@@ -18,6 +18,10 @@ Thumbs.db
 *.log
 *.tmp
 
+# Python deployment tooling
+__pycache__/
+*.pyc
+
 # Eclipse
 .classpath
 .project

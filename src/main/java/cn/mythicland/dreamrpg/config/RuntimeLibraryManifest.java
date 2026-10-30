@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.lib.library.LibrarySpec;
+import cn.mythicland.dreamlib.library.LibrarySpec;
 
 import java.util.Objects;
 

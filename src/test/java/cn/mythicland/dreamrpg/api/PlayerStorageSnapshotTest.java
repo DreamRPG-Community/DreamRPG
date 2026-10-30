@@ -8,11 +8,23 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies that the player storage contract keeps the 54-slot custom chest immutable.
  */
 class PlayerStorageSnapshotTest {
+
+    @Test
+    void vitalsSurviveInventoryAndEnderChestUpdates() {
+        PlayerVitals vitals = new PlayerVitals(7.5, 12, 3.5f, 1.0f);
+        PlayerStorageSnapshot original = PlayerStorageSnapshot.empty(UUID.randomUUID()).withVitals(vitals);
+        PlayerStorageSnapshot updated = original.withPlayerInventory(original.inventory(), original.armor(), null, 0)
+                .withEnderChest(original.enderChest());
+        assertEquals(vitals, updated.vitals());
+        assertThrows(IllegalArgumentException.class, () -> new PlayerVitals(5, 21, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new PlayerVitals(Double.NaN, 20, 0, 0));
+    }
 
     @Test
     void emptyStorageCreatesOneSixRowEnderChestPage() {

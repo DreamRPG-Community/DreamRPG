@@ -15,13 +15,26 @@ dependencyResolutionManagement {
             name = "Paper"
             url = uri("https://repo.papermc.io/repository/maven-public/")
         }
+        maven {
+            name = "Lumine"
+            url = uri("https://mvn.lumine.io/repository/maven-public/")
+        }
     }
 }
 
-includeBuild("../Lib") {
+includeBuild("../DreamLib") {
     dependencySubstitution {
-        substitute module("self-written:Lib") using project(":")
+        substitute module("self-written:DreamLib") using project(":")
     }
 }
 
 rootProject.name = "DreamRPG"
+
+includeBuild("../DreamNPC")
+includeBuild("../DreamChest")
+
+includeBuild("../DreamWorld") {
+    dependencySubstitution {
+        substitute module("self-written:DreamWorld") using project(":")
+    }
+}

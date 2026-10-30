@@ -1,10 +1,11 @@
 package cn.mythicland.dreamrpg.database;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.database.SqlDatabase;
-import cn.mythicland.lib.item.ItemStackArrayCodec;
+import cn.mythicland.dreamrpg.api.PlayerVitals;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.database.SqlDatabase;
+import cn.mythicland.dreamlib.item.ItemStackArrayCodec;
 import org.bukkit.inventory.ItemStack;
 
 import java.sql.Connection;
@@ -27,14 +28,20 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
      *
      * @param context DreamRPG infrastructure context
      */
-    public PlayerStorageRepository(DreamRpgContext context) {
+    public PlayerStorageRepository(DreamRPGContext context) {
         this.database = Objects.requireNonNull(context, "context").database();
+    }
+
+    private PlayerStorageRepository(SqlDatabase database) {
+        this.database = Objects.requireNonNull(database, "database");
     }
 
     private static PlayerStorageSnapshot select(Connection connection, UUID uniqueId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT format_version, inventory_base64, armor_base64, extra_base64, held_slot, "
-                        + "ender_chest_base64, ender_chest_page, version FROM player_storage WHERE uuid = ?"
+                "SELECT s.format_version, s.inventory_base64, s.armor_base64, s.extra_base64, s.held_slot, "
+                        + "s.ender_chest_base64, s.ender_chest_page, s.version, "
+                        + "v.health, v.food_level, v.saturation, v.exhaustion FROM player_storage s "
+                        + "LEFT JOIN player_vitals v ON v.uuid = s.uuid WHERE s.uuid = ?"
         )) {
             statement.setString(1, uniqueId.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -68,7 +75,11 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
                         enderChest,
                         resultSet.getInt("ender_chest_page"),
                         formatVersion,
-                        resultSet.getLong("version")
+                        resultSet.getLong("version"),
+                        resultSet.getObject("health") == null ? null : new PlayerVitals(
+                                resultSet.getDouble("health"), resultSet.getInt("food_level"),
+                                resultSet.getFloat("saturation"), resultSet.getFloat("exhaustion")
+                        )
                 );
             }
         } catch (IllegalArgumentException exception) {
@@ -135,7 +146,24 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
                 bindSnapshot(statement, value, nextVersion, 1);
                 statement.setString(10, value.uniqueId().toString());
                 statement.setLong(11, expectedVersion);
-                return statement.executeUpdate();
+                int updated = statement.executeUpdate();
+                if (updated != 1 || value.vitals() == null) return updated;
+                PlayerVitals vitals = value.vitals();
+                try (PreparedStatement delete = connection.prepareStatement("DELETE FROM player_vitals WHERE uuid = ?")) {
+                    delete.setString(1, value.uniqueId().toString());
+                    delete.executeUpdate();
+                }
+                try (PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO player_vitals (uuid, health, food_level, saturation, exhaustion) VALUES (?, ?, ?, ?, ?)"
+                )) {
+                    insert.setString(1, value.uniqueId().toString());
+                    insert.setDouble(2, vitals.health());
+                    insert.setInt(3, vitals.foodLevel());
+                    insert.setFloat(4, vitals.saturation());
+                    insert.setFloat(5, vitals.exhaustion());
+                    insert.executeUpdate();
+                }
+                return updated;
             }
         });
         if (changedRows != 1) {

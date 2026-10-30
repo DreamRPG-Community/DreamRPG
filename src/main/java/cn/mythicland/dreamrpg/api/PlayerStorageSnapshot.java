@@ -17,6 +17,7 @@ import java.util.UUID;
  * @param enderChestPage  current future page index
  * @param formatVersion   storage format version
  * @param databaseVersion optimistic persistence version
+ * @param vitals          saved health and hunger, or null when no state has been captured yet
  */
 public record PlayerStorageSnapshot(
         UUID uniqueId,
@@ -27,13 +28,24 @@ public record PlayerStorageSnapshot(
         ItemStack[] enderChest,
         int enderChestPage,
         int formatVersion,
-        long databaseVersion
+        long databaseVersion,
+        PlayerVitals vitals
 ) {
 
     public static final int CURRENT_FORMAT_VERSION = 1;
     public static final int INVENTORY_SIZE = 36;
     public static final int ARMOR_SIZE = 4;
     public static final int ENDER_CHEST_SIZE = 54;
+
+    /**
+     * Retains the original inventory-only constructor for existing callers.
+     */
+    public PlayerStorageSnapshot(UUID uniqueId, ItemStack[] inventory, ItemStack[] armor, ItemStack offHand,
+                                 int heldSlot, ItemStack[] enderChest, int enderChestPage,
+                                 int formatVersion, long databaseVersion) {
+        this(uniqueId, inventory, armor, offHand, heldSlot, enderChest, enderChestPage, formatVersion,
+                databaseVersion, null);
+    }
 
     /**
      * Validates and detaches all mutable Bukkit item values.
@@ -133,7 +145,8 @@ public record PlayerStorageSnapshot(
                 enderChest,
                 enderChestPage,
                 formatVersion,
-                databaseVersion
+                databaseVersion,
+                vitals
         );
     }
 
@@ -153,7 +166,16 @@ public record PlayerStorageSnapshot(
                 nextEnderChest,
                 enderChestPage,
                 formatVersion,
-                databaseVersion
+                databaseVersion,
+                vitals
         );
+    }
+
+    /**
+     * Returns a detached snapshot with the supplied player health and hunger.
+     */
+    public PlayerStorageSnapshot withVitals(PlayerVitals nextVitals) {
+        return new PlayerStorageSnapshot(uniqueId, inventory, armor, offHand, heldSlot, enderChest,
+                enderChestPage, formatVersion, databaseVersion, Objects.requireNonNull(nextVitals, "nextVitals"));
     }
 }

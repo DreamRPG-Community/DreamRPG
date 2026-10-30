@@ -1,17 +1,32 @@
 name: DreamRPG
 version: ${version}
-main: cn.mythicland.dreamrpg.DreamRpgPlugin
+main: cn.mythicland.dreamrpg.DreamRPGPlugin
 author: ShanguanLinG
 load: POSTWORLD
-depend: [ Lib ]
-softdepend: [ PlaceholderAPI, Essentials, EssentialsSpawn, Vault, PlayerPoints, WorldManager, WorldRegion, ViaVersion, ViaBackwards, ViaRewind ]
-loadbefore: [ QuickShop ]
+depend:
+- DreamLib
+- DreamWorld
+- MythicMobs
+- DreamNPC
+- DreamChest
+softdepend:
+- PlaceholderAPI
+- Vault
+- PlayerPoints
+- ViaVersion
+- ViaBackwards
+- ViaRewind
+loadbefore:
+- QuickShop
 description: Shared RPG foundation for the DreamRPG server.
-
 commands:
+  warp:
+    description: Travel to a configured RPG location.
+    usage: /warp <location>
   dreamrpg:
-    description: Manage DreamRPG.
-    aliases: [ drpg ]
+    description: Manage DreamRPG features.
+    aliases:
+    - drpg
   spawn:
     description: Teleport to the DreamRPG main-city spawn.
   setspawn:
@@ -22,12 +37,26 @@ commands:
     permission: dreamrpg.admin
   enderchest:
     description: Open the DreamRPG custom ender chest.
-    aliases: [ ec ]
-
+    aliases:
+    - ec
 permissions:
   dreamrpg.admin:
     description: Allows DreamRPG administration commands.
     default: op
+    children:
+      dreamnpc.admin: true
+      dreamchest.admin: true
+      dreamworld.admin: true
+      dreamworld.protect.admin: true
+      dreamworld.region.admin: true
+      dreamchest.reload: true
+      dreamworld.protect.edit: true
   dreamrpg.chat.color:
     description: Allows legacy colors in chat messages.
     default: op
+  dreamrpg.stats:
+    description: View your DreamRPG combat attributes.
+    default: true
+  dreamrpg.quests:
+    description: Open task and NPC exchange menus.
+    default: true

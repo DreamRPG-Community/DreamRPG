@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpg.database;
 
-import cn.mythicland.lib.database.SqlDatabase;
+import cn.mythicland.dreamlib.database.SqlDatabase;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

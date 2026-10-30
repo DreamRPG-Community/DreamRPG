@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.database;
 
 import cn.mythicland.dreamrpg.api.InsufficientCoinsException;
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.database.SqlDatabase;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.database.SqlDatabase;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -30,7 +30,7 @@ public final class CoinRepository implements CoinStore {
      *
      * @param context DreamRPG infrastructure context
      */
-    public CoinRepository(DreamRpgContext context) {
+    public CoinRepository(DreamRPGContext context) {
         this.database = Objects.requireNonNull(context, "context").database();
     }
 

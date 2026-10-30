@@ -1,15 +1,24 @@
 package cn.mythicland.dreamrpg.enderchest;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
+import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
+import cn.mythicland.dreamrpgitems.api.DreamRPGItemApi;
+import cn.mythicland.dreamrpgitems.api.MythicItemRefreshMode;
+import cn.mythicland.dreamrpgitems.api.MythicItemRefreshStatus;
+import cn.mythicland.dreamrpgitems.api.MythicItemsChangedEvent;
+import cn.mythicland.dreamrpgitems.api.MythicItemsSyncRequestedEvent;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.lib.container.ContainerAnimationService;
-import cn.mythicland.lib.container.ContainerAnimationSpec;
-import cn.mythicland.lib.loading.PlayerLoadingGate;
-import cn.mythicland.lib.menu.MenuService;
-import cn.mythicland.lib.text.LegacyText;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.dreamlib.container.ContainerAnimationService;
+import cn.mythicland.dreamlib.container.ContainerAnimationSpec;
+import cn.mythicland.dreamlib.loading.PlayerLoadingGate;
+import cn.mythicland.dreamlib.menu.MenuService;
+import cn.mythicland.dreamlib.text.LegacyText;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -95,6 +104,58 @@ public final class EnderChestService implements Listener, AutoCloseable {
     )
     public void onTeleport(PlayerTeleportEvent event) {
         if (openMenus.containsKey(event.getPlayer().getUniqueId())) menus.close(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerDataReady(PlayerDataReadyEvent event) {
+        Player player = Bukkit.getPlayer(event.uniqueId());
+        if (player != null) synchronizeItems(player);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onItemsChanged(MythicItemsChangedEvent event) {
+        synchronizeLoadedPlayers();
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSyncRequested(MythicItemsSyncRequestedEvent event) {
+        synchronizeLoadedPlayers();
+    }
+
+    private void synchronizeLoadedPlayers() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!storage.isReady(player.getUniqueId()) || loadingGate.isRestricted(player)) continue;
+            synchronizeItems(player);
+        }
+    }
+
+    private void synchronizeItems(Player player) {
+        if (!storage.isLoaded(player.getUniqueId())) return;
+        DreamRPGItemApi items = Bukkit.getServicesManager().load(DreamRPGItemApi.class);
+        if (items == null) {
+            logger.warning("DreamRPG item service is unavailable; custom ender-chest synchronization skipped.");
+            return;
+        }
+        boolean open = openMenus.containsKey(player.getUniqueId());
+        Inventory inventory = open ? player.getOpenInventory().getTopInventory() : null;
+        ItemStack[] contents = open ? inventory.getContents() : storage.findLoaded(player.getUniqueId()).orElseThrow().enderChest();
+        boolean changed = false;
+        int stale = 0;
+        for (int slot = 0; slot < contents.length; slot++) {
+            var result = items.refresh(contents[slot], MythicItemRefreshMode.EXISTING_INSTANCE);
+            if (result.status() == MythicItemRefreshStatus.UPDATED) {
+                contents[slot] = result.item();
+                changed = true;
+            } else if (result.status() == MythicItemRefreshStatus.STALE) stale++;
+        }
+        if (changed) {
+            storage.updateEnderChest(player.getUniqueId(), contents);
+            if (open) {
+                inventory.setContents(contents);
+                player.updateInventory();
+            }
+        }
+        if (stale > 0) logger.warning("Kept " + stale + " stale items in " + player.getName() + "'s custom ender chest");
     }
 
     @Override

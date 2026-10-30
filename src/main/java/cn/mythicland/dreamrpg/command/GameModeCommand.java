@@ -1,10 +1,10 @@
 package cn.mythicland.dreamrpg.command;
 
-import cn.mythicland.lib.bootstrap.annotation.CommandCompleter;
-import cn.mythicland.lib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.lib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.lib.command.CommandContext;
-import cn.mythicland.lib.command.VanillaCommandMessages;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandCompleter;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
+import cn.mythicland.dreamlib.command.CommandContext;
+import cn.mythicland.dreamlib.command.VanillaCommandMessages;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;

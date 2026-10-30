@@ -2,11 +2,11 @@ package cn.mythicland.dreamrpg.enderchest;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
-import cn.mythicland.lib.container.ContainerAnimationHandle;
-import cn.mythicland.lib.container.ContainerAnimationSpec;
-import cn.mythicland.lib.menu.MenuService;
-import cn.mythicland.lib.menu.StatefulMenuView;
-import cn.mythicland.lib.text.LegacyText;
+import cn.mythicland.dreamlib.container.ContainerAnimationHandle;
+import cn.mythicland.dreamlib.container.ContainerAnimationSpec;
+import cn.mythicland.dreamlib.menu.MenuService;
+import cn.mythicland.dreamlib.menu.StatefulMenuView;
+import cn.mythicland.dreamlib.text.LegacyText;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;

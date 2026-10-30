@@ -1,11 +1,11 @@
 package cn.mythicland.dreamrpg.command;
 
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
-import cn.mythicland.lib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.lib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.lib.command.CommandContext;
-import cn.mythicland.lib.command.VanillaCommandMessages;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
+import cn.mythicland.dreamlib.command.CommandContext;
+import cn.mythicland.dreamlib.command.VanillaCommandMessages;
 import org.bukkit.entity.Player;
 
 import java.util.Objects;
@@ -18,7 +18,7 @@ public final class SpawnCommand {
 
     private final SpawnService spawnService;
 
-    public SpawnCommand(DreamRpgContext context) {
+    public SpawnCommand(DreamRPGContext context) {
         this.spawnService = Objects.requireNonNull(context, "context").spawnService();
     }
 

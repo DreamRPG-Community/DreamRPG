@@ -1,17 +1,17 @@
 package cn.mythicland.dreamrpg.profile;
 
 import cn.mythicland.dreamrpg.api.CareerDefinition;
-import cn.mythicland.dreamrpg.api.DreamRpgApi;
+import cn.mythicland.dreamrpg.api.DreamRPGApi;
 import cn.mythicland.dreamrpg.api.PlayerPresentation;
 import cn.mythicland.dreamrpg.api.PlayerProfile;
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.config.CareerCatalog;
 import cn.mythicland.dreamrpg.database.PlayerProfileStore;
 import cn.mythicland.dreamrpg.event.CareerChangedEvent;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
-import cn.mythicland.lib.api.LibApi;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
+import cn.mythicland.dreamlib.api.DreamLibApi;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -25,10 +25,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * Owns the cached player profile boundary and future internal career writes.
  */
 @InjectComponent
-@ServiceComponent(DreamRpgApi.class)
-public final class PlayerProfileService implements DreamRpgApi {
+@ServiceComponent(DreamRPGApi.class)
+public final class PlayerProfileService implements DreamRPGApi {
 
-    private final LibApi lib;
+    private final DreamLibApi lib;
     private final PlayerProfileStore repository;
     private final SpawnService spawnService;
     private final Map<UUID, PlayerProfile> profiles = new ConcurrentHashMap<>();
@@ -40,8 +40,8 @@ public final class PlayerProfileService implements DreamRpgApi {
      *
      * @param context initialized DreamRPG context
      */
-    public PlayerProfileService(DreamRpgContext context) {
-        DreamRpgContext initializedContext = Objects.requireNonNull(context, "context");
+    public PlayerProfileService(DreamRPGContext context) {
+        DreamRPGContext initializedContext = Objects.requireNonNull(context, "context");
         this.lib = initializedContext.lib();
         this.repository = initializedContext.repository();
         this.careerCatalog = initializedContext.careerCatalog();

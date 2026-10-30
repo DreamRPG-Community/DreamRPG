@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.lib.config.ConfigSupport;
-import cn.mythicland.lib.config.ConfigValue;
-import cn.mythicland.lib.text.TemplateRenderer;
-import cn.mythicland.lib.text.TextAnimation;
+import cn.mythicland.dreamlib.config.ConfigSupport;
+import cn.mythicland.dreamlib.config.ConfigValue;
+import cn.mythicland.dreamlib.text.TemplateRenderer;
+import cn.mythicland.dreamlib.text.TextAnimation;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.time.DateTimeException;

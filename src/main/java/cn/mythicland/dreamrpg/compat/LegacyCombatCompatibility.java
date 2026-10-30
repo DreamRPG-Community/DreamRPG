@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.compat;
 
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
-import cn.mythicland.lib.bootstrap.PluginTaskScope;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;

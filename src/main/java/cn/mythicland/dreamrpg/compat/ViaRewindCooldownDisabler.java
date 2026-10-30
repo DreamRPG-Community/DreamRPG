@@ -1,10 +1,10 @@
 package cn.mythicland.dreamrpg.compat;
 
-import cn.mythicland.lib.bootstrap.LibPluginLifecycle;
-import cn.mythicland.lib.bootstrap.PluginTaskScope;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.LifecycleComponent;
-import cn.mythicland.lib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
+import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,7 +26,7 @@ import java.util.logging.Level;
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
-public final class ViaRewindCooldownDisabler implements LibPluginLifecycle, Listener {
+public final class ViaRewindCooldownDisabler implements DreamLibPluginLifecycle, Listener {
 
     private static final String VIA_REWIND_PLUGIN = "ViaRewind";
     private static final String VIA_REWIND_CONFIG = "com.viaversion.viarewind.ViaRewind";

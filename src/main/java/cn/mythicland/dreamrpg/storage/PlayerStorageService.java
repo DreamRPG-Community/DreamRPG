@@ -2,12 +2,13 @@ package cn.mythicland.dreamrpg.storage;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageApi;
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
+import cn.mythicland.dreamrpg.api.PlayerVitals;
 import cn.mythicland.dreamrpg.database.PlayerStorageStore;
-import cn.mythicland.lib.api.LibApi;
-import cn.mythicland.lib.bootstrap.PluginTaskScope;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
-import cn.mythicland.lib.storage.VersionedPlayerSession;
+import cn.mythicland.dreamlib.api.DreamLibApi;
+import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
+import cn.mythicland.dreamlib.storage.VersionedPlayerSession;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -32,11 +33,12 @@ public final class PlayerStorageService implements PlayerStorageApi {
     private static final long AUTOSAVE_PERIOD_TICKS = 20L;
     private static final CompletableFuture<Void> COMPLETED_SAVE = CompletableFuture.completedFuture(null);
 
-    private final LibApi lib;
+    private final DreamLibApi lib;
     private final PluginTaskScope tasks;
     private final PlayerStorageStore store;
     private final Logger logger;
     private final Map<UUID, VersionedPlayerSession<PlayerStorageSnapshot>> sessions = new ConcurrentHashMap<>();
+    private final Set<UUID> readySessions = ConcurrentHashMap.newKeySet();
     private final Map<UUID, CompletableFuture<PlayerStorageSnapshot>> loads = new ConcurrentHashMap<>();
     private final Map<UUID, CompletableFuture<Void>> saveChains = new ConcurrentHashMap<>();
     private BukkitTask autosaveTask;
@@ -51,7 +53,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
      * @param logger persistence logger
      */
     public PlayerStorageService(
-            LibApi lib,
+            DreamLibApi lib,
             PluginTaskScope tasks,
             PlayerStorageStore store,
             Logger logger
@@ -133,12 +135,51 @@ public final class PlayerStorageService implements PlayerStorageApi {
         Player target = Objects.requireNonNull(player, "player");
         VersionedPlayerSession<PlayerStorageSnapshot> session = session(target.getUniqueId());
         PlayerInventory inventory = target.getInventory();
-        session.replace(session.snapshot().withPlayerInventory(
+        PlayerStorageSnapshot snapshot = session.snapshot().withPlayerInventory(
                 inventory.getStorageContents(),
                 inventory.getArmorContents(),
                 inventory.getItemInOffHand(),
                 inventory.getHeldItemSlot()
-        ));
+        );
+        session.replace(snapshot.withVitals(new PlayerVitals(
+                target.getHealth(), target.getFoodLevel(), target.getSaturation(), target.getExhaustion()
+        )));
+    }
+
+    /**
+     * Applies stored vitals after the level-based maximum health is initialized.
+     */
+    @SuppressWarnings("deprecation")
+    public void applyVitals(Player player) {
+        ensurePrimaryThread();
+        Player target = Objects.requireNonNull(player, "player");
+        PlayerVitals vitals = session(target.getUniqueId()).snapshot().vitals();
+        if (vitals == null) return;
+        double health = vitals.health();
+        if (health <= 0) health = target.getMaxHealth();
+        target.setHealth(Math.min(health, target.getMaxHealth()));
+        target.setFoodLevel(vitals.foodLevel());
+        target.setSaturation(vitals.saturation());
+        target.setExhaustion(vitals.exhaustion());
+    }
+
+    /**
+     * Marks a fully applied session as safe to capture.
+     */
+    public void markReady(UUID uniqueId) {
+        ensurePrimaryThread();
+        session(uniqueId);
+        readySessions.add(uniqueId);
+    }
+
+    /**
+     * Checks whether a session has been fully applied to the online player.
+     *
+     * @param uniqueId player UUID
+     * @return true when the session may be captured
+     */
+    public boolean isReady(UUID uniqueId) {
+        return uniqueId != null && readySessions.contains(uniqueId);
     }
 
     /**
@@ -160,6 +201,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
      */
     public void discard(UUID uniqueId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
+        readySessions.remove(uniqueId);
         sessions.remove(uniqueId);
         loads.remove(uniqueId);
     }
@@ -171,6 +213,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
      */
     public void release(UUID uniqueId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
+        readySessions.remove(uniqueId);
         sessions.remove(uniqueId);
     }
 
@@ -224,13 +267,13 @@ public final class PlayerStorageService implements PlayerStorageApi {
     public void captureOnlinePlayersAndFlush() {
         ensurePrimaryThread();
         for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers())) {
-            if (isLoaded(player.getUniqueId())) capture(player);
+            if (isReady(player.getUniqueId())) capture(player);
         }
         flushAll().whenComplete((ignored, failure) -> {
             if (failure != null) {
                 logger.log(
                         Level.SEVERE,
-                        "DreamRPG player storage autosave failed: " + LibApi.rootCauseMessage(failure),
+                        "DreamRPG player storage autosave failed: " + DreamLibApi.rootCauseMessage(failure),
                         failure
                 );
             }
@@ -246,7 +289,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
         tasks.cancel(autosaveTask);
         autosaveTask = null;
         for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers())) {
-            if (isLoaded(player.getUniqueId())) capture(player);
+            if (isReady(player.getUniqueId())) capture(player);
         }
         try {
             flushAll().join();
@@ -255,6 +298,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
         } finally {
             closed = true;
             sessions.clear();
+            readySessions.clear();
             loads.clear();
             saveChains.clear();
         }

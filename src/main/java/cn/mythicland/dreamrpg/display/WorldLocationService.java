@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpg.display;
 
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -15,15 +15,15 @@ import java.util.Optional;
 import java.util.logging.Level;
 
 /**
- * Resolves DreamRPG location text from WorldRegion and WorldManager public services.
+ * Resolves DreamRPG location text from WorldRegion and DreamWorld public services.
  */
 @InjectComponent
 public final class WorldLocationService {
 
-    private static final String WORLD_MANAGER_NAME = "WorldManager";
-    private static final String WORLD_MANAGER_API = "cn.mythicland.worldmanager.api.WorldManagerApi";
-    private static final String WORLD_REGION_NAME = "WorldRegion";
-    private static final String WORLD_REGION_API = "cn.mythicland.worldregion.api.WorldRegionApi";
+    private static final String WORLD_MANAGER_NAME = "DreamWorld";
+    private static final String WORLD_MANAGER_API = "cn.mythicland.dreamworld.api.DreamWorldApi";
+    private static final String WORLD_REGION_NAME = "DreamWorld";
+    private static final String WORLD_REGION_API = "cn.mythicland.dreamworldregion.api.DreamWorldRegionApi";
 
     private final JavaPlugin plugin;
     private Object worldManager;
@@ -49,19 +49,19 @@ public final class WorldLocationService {
      * Validates that both location services required by {@code {location}} are ready.
      */
     public void requireAvailable() {
-        requireWorldManagerAvailable("{location}");
+        requireDreamWorldAvailable("{location}");
         if (worldRegionUnavailable()) {
-            throw new IllegalStateException("WorldRegion service is required by scoreboard {location}");
+            throw new IllegalStateException("DreamWorld region service is required by scoreboard {location}");
         }
     }
 
     /**
-     * Validates the WorldManager portion used by the legacy {@code {world}} placeholder.
+     * Validates the DreamWorld portion used by the legacy {@code {world}} placeholder.
      *
-     * @throws IllegalStateException when WorldManager is not ready
+     * @throws IllegalStateException when DreamWorld is not ready
      */
-    public void requireWorldManagerAvailable() {
-        requireWorldManagerAvailable("{world}");
+    public void requireDreamWorldAvailable() {
+        requireDreamWorldAvailable("{world}");
     }
 
     /**
@@ -77,45 +77,45 @@ public final class WorldLocationService {
     }
 
     /**
-     * Returns the WorldManager logical name for a loaded world.
+     * Returns the DreamWorld logical name for a loaded world.
      *
      * @param world loaded world
      * @return logical world name
      */
     public String worldName(World world) {
         World targetWorld = Objects.requireNonNull(world, "world");
-        if (worldManagerUnavailable()) throw new IllegalStateException("WorldManager service is unavailable");
+        if (worldManagerUnavailable()) throw new IllegalStateException("DreamWorld service is unavailable");
         try {
             Object result = findLogicalName.invoke(worldManager, targetWorld);
             if (!(result instanceof Optional<?> optional)) {
-                throw new IllegalStateException("WorldManager returned a non-optional logical name");
+                throw new IllegalStateException("DreamWorld returned a non-optional logical name");
             }
             return optional.filter(String.class::isInstance)
                     .map(String.class::cast)
                     .orElseThrow(() -> new IllegalStateException(
-                            "WorldManager has no logical name for world: " + targetWorld.getName()
+                            "DreamWorld has no logical name for world: " + targetWorld.getName()
                     ));
         } catch (IllegalAccessException | InvocationTargetException exception) {
-            throw new IllegalStateException("WorldManager logical-name lookup failed", exception);
+            throw new IllegalStateException("DreamWorld logical-name lookup failed", exception);
         }
     }
 
     private Optional<String> regionName(Location location) {
-        if (worldRegionUnavailable()) throw new IllegalStateException("WorldRegion service is unavailable");
+        if (worldRegionUnavailable()) throw new IllegalStateException("DreamWorld region service is unavailable");
         try {
             Object result = findRegion.invoke(worldRegion, location);
             if (!(result instanceof Optional<?> optional)) {
-                throw new IllegalStateException("WorldRegion returned a non-optional region");
+                throw new IllegalStateException("DreamWorld region returned a non-optional region");
             }
             if (optional.isEmpty()) return Optional.empty();
             Object region = optional.orElseThrow();
             Object displayName = regionDisplayName.invoke(region);
             if (!(displayName instanceof String value) || value.isBlank()) {
-                throw new IllegalStateException("WorldRegion returned a blank display name");
+                throw new IllegalStateException("DreamWorld region returned a blank display name");
             }
             return Optional.of(value);
         } catch (IllegalAccessException | InvocationTargetException exception) {
-            throw new IllegalStateException("WorldRegion lookup failed", exception);
+            throw new IllegalStateException("DreamWorld region lookup failed", exception);
         }
     }
 
@@ -133,7 +133,7 @@ public final class WorldLocationService {
             return false;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             worldManagerLookupFailed = true;
-            logFailure("WorldManager", exception, true);
+            logFailure("DreamWorld", exception, true);
             return true;
         }
     }
@@ -150,7 +150,7 @@ public final class WorldLocationService {
             worldRegion = registration.getProvider();
             findRegion = apiType.getMethod("findRegion", Location.class);
             Class<?> regionType = Class.forName(
-                    "cn.mythicland.worldregion.api.RegionDefinition",
+                    "cn.mythicland.dreamworldregion.api.RegionDefinition",
                     true,
                     plugin.getClass().getClassLoader()
             );
@@ -158,7 +158,7 @@ public final class WorldLocationService {
             return false;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             worldRegionLookupFailed = true;
-            logFailure("WorldRegion", exception, false);
+            logFailure("DreamWorld region", exception, false);
             return true;
         }
     }
@@ -180,9 +180,9 @@ public final class WorldLocationService {
         );
     }
 
-    private void requireWorldManagerAvailable(String placeholder) {
+    private void requireDreamWorldAvailable(String placeholder) {
         if (worldManagerUnavailable()) {
-            throw new IllegalStateException("WorldManager service is required by scoreboard " + placeholder);
+            throw new IllegalStateException("DreamWorld service is required by scoreboard " + placeholder);
         }
     }
 }

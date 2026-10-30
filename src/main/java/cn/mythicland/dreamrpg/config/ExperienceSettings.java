@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.lib.config.ConfigSupport;
-import cn.mythicland.lib.config.ConfigValue;
-import cn.mythicland.lib.config.ConfigView;
+import cn.mythicland.dreamlib.config.ConfigSupport;
+import cn.mythicland.dreamlib.config.ConfigValue;
+import cn.mythicland.dreamlib.config.ConfigView;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.Objects;

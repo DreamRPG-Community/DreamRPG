@@ -5,11 +5,11 @@ import cn.mythicland.dreamrpg.config.ExperienceConfiguration;
 import cn.mythicland.dreamrpg.config.ExperienceSettings;
 import cn.mythicland.dreamrpg.database.ExperienceStore;
 import cn.mythicland.dreamrpg.event.RpgLevelUpEvent;
-import cn.mythicland.lib.api.LibApi;
-import cn.mythicland.lib.bootstrap.PluginTaskScope;
-import cn.mythicland.lib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.lib.bootstrap.annotation.ServiceComponent;
-import cn.mythicland.lib.storage.VersionedPlayerSession;
+import cn.mythicland.dreamlib.api.DreamLibApi;
+import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
+import cn.mythicland.dreamlib.storage.VersionedPlayerSession;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -39,7 +39,7 @@ public final class ExperienceService implements ExperienceApi {
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(ExperienceCalculator.SCALE, RoundingMode.HALF_UP);
     private static final CompletableFuture<Void> COMPLETED_SAVE = CompletableFuture.completedFuture(null);
 
-    private final LibApi lib;
+    private final DreamLibApi lib;
     private final PluginTaskScope tasks;
     private final ExperienceStore store;
     private final ExperienceConfiguration configuration;
@@ -65,7 +65,7 @@ public final class ExperienceService implements ExperienceApi {
      * @param logger        DreamRPG logger
      */
     public ExperienceService(
-            LibApi lib,
+            DreamLibApi lib,
             PluginTaskScope tasks,
             ExperienceStore store,
             ExperienceConfiguration configuration,
@@ -557,7 +557,7 @@ public final class ExperienceService implements ExperienceApi {
             if (failure != null) {
                 logger.log(
                         Level.SEVERE,
-                        "DreamRPG experience autosave failed: " + LibApi.rootCauseMessage(failure),
+                        "DreamRPG experience autosave failed: " + DreamLibApi.rootCauseMessage(failure),
                         failure
                 );
             }

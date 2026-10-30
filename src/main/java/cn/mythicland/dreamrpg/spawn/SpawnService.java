@@ -1,7 +1,8 @@
 package cn.mythicland.dreamrpg.spawn;
 
-import cn.mythicland.dreamrpg.config.DreamRpgSettings;
+import cn.mythicland.dreamrpg.config.DreamRPGSettings;
 import org.bukkit.Bukkit;
+import cn.mythicland.dreamworld.api.DreamWorldApi;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -13,15 +14,17 @@ import java.util.Objects;
  */
 public final class SpawnService {
 
-    private Location location;
-    private DreamRpgSettings.SpawnSettings settings;
+    private final DreamWorldApi worlds = Objects.requireNonNull(
+            Bukkit.getServicesManager().load(DreamWorldApi.class), "DreamWorld service is unavailable"
+    );
+    private DreamRPGSettings.SpawnSettings settings;
 
     /**
      * Creates a spawn service and validates the configured world immediately.
      *
      * @param settings spawn settings
      */
-    public SpawnService(DreamRpgSettings.SpawnSettings settings) {
+    public SpawnService(DreamRPGSettings.SpawnSettings settings) {
         reload(settings);
     }
 
@@ -30,20 +33,12 @@ public final class SpawnService {
      *
      * @param refreshedSettings new settings
      */
-    public void reload(DreamRpgSettings.SpawnSettings refreshedSettings) {
+    public void reload(DreamRPGSettings.SpawnSettings refreshedSettings) {
         Objects.requireNonNull(refreshedSettings, "refreshedSettings");
-        World world = Bukkit.getWorld(refreshedSettings.worldName());
+        World world = worlds.find(refreshedSettings.worldName()).orElse(null);
         if (world == null)
             throw new IllegalStateException("Main spawn world is unavailable: " + refreshedSettings.worldName());
         settings = refreshedSettings;
-        location = new Location(
-                world,
-                refreshedSettings.x(),
-                refreshedSettings.y(),
-                refreshedSettings.z(),
-                refreshedSettings.yaw(),
-                refreshedSettings.pitch()
-        );
     }
 
     /**
@@ -52,7 +47,11 @@ public final class SpawnService {
      * @return spawn location
      */
     public Location location() {
-        return Objects.requireNonNull(location, "Main spawn is not initialized").clone();
+        String name = settings.worldName();
+        World world = worlds.find(name).orElseThrow(() -> new IllegalStateException("Main spawn world is unavailable: " + name));
+        return worlds.findSpawn(name)
+                .orElseThrow(() -> new IllegalStateException("DreamWorld/spawns.yml requires a spawn for: " + name))
+                .toLocation(world);
     }
 
     /**
@@ -71,7 +70,7 @@ public final class SpawnService {
      *
      * @return spawn settings
      */
-    public DreamRpgSettings.SpawnSettings settings() {
+    public DreamRPGSettings.SpawnSettings settings() {
         return Objects.requireNonNull(settings, "Spawn settings are unavailable");
     }
 }

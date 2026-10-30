@@ -1,43 +1,49 @@
-libraries:
-  repository: "https://repo1.maven.org/maven2/"
-
 database:
   mode: sqlite
   sqlite:
-    file: "profiles.db"
+    file: profiles.db
   mysql:
-    host: "127.0.0.1"
+    host: 127.0.0.1
     port: 3306
-    database: "dreamrpg"
-    username: "root"
-    password: ""
+    database: dreamrpg
+    username: root
+    password: ''
     use-ssl: false
-    server-timezone: "Asia/Shanghai"
-
+    server-timezone: Asia/Shanghai
 experience:
   max-level: -1
-
 health:
   enabled: true
   base-health: 20.0
   health-per-level: 5.0
-
 spawn:
-  world: "world"
-  x: 0.5
-  y: 7.0
-  z: 2.5
-  yaw: 180
-  pitch: 0
+  world: world
   teleport-on-join: true
   teleport-on-respawn: true
-
 chat:
   format: '%luckperms_prefix% {prefix} {name}&7: &f{message}'
   color-permission: dreamrpg.chat.color
 display:
   tab:
-    header: [ ]
-    footer: [ ]
+    header: []
+    footer: []
     player-name-format: '{prefix} {name}        '
   name-tag-format: '{prefix} {name}'
+combat-feedback: false
+messages:
+  critical-hit: '&c&l暴击! &f你造成了&c{damage}&f点伤害!'
+  health-regen: '&a&l生命回复! &f你恢复了&c{amount}&f点生命值!'
+labels:
+  damage: 伤害
+  defense: 防御
+  health: 生命值
+  health-regen: 生命回复
+  crit-chance: 暴击几率
+  crit-damage: 暴击伤害
+  experience-bonus: 经验加成
+  level-requirement: 需要等级
+web:
+  enabled: false
+  bind-address: 127.0.0.1
+  port: 8765
+  token: ''

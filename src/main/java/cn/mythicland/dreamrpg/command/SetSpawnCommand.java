@@ -1,10 +1,11 @@
 package cn.mythicland.dreamrpg.command;
 
-import cn.mythicland.dreamrpg.bootstrap.DreamRpgContext;
-import cn.mythicland.lib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.lib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.lib.command.CommandContext;
-import cn.mythicland.lib.command.VanillaCommandMessages;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
+import cn.mythicland.dreamlib.api.DreamLibApi;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
+import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
+import cn.mythicland.dreamlib.command.CommandContext;
+import cn.mythicland.dreamlib.command.VanillaCommandMessages;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -21,9 +22,11 @@ import java.util.Objects;
 )
 public final class SetSpawnCommand {
 
-    private final DreamRpgContext context;
+    private final DreamRPGContext context;
+    private final DreamLibApi lib;
 
-    public SetSpawnCommand(DreamRpgContext context) {
+    public SetSpawnCommand(DreamRPGContext context, DreamLibApi lib) {
+        this.lib = lib;
         this.context = Objects.requireNonNull(context, "context");
     }
 
@@ -47,7 +50,10 @@ public final class SetSpawnCommand {
             commandContext.sender().sendMessage(VanillaCommandMessages.red("只有玩家可以使用此命令。"));
             return;
         }
-        Location saved = context.setMainSpawn(player.getLocation());
-        commandContext.sender().sendMessage(VanillaCommandMessages.green(formatSuccess(saved)));
+        context.setMainSpawn(player.getLocation()).whenComplete((saved, error) -> lib.runOnMain(() -> {
+            if (error != null)
+                player.sendMessage(VanillaCommandMessages.red("出生点保存失败: " + DreamLibApi.rootCauseMessage(error)));
+            else player.sendMessage(VanillaCommandMessages.green(formatSuccess(saved)));
+        }));
     }
 }
