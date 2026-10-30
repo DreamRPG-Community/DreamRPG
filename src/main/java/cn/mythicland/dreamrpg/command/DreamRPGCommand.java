@@ -77,14 +77,9 @@ public final class DreamRPGCommand extends ItemCommands {
         context.requireArguments(0);
         Player player = player(context);
         var combat = plugin.combatModule();
-        CombatStatsDisplay.render(combat.statsService().getStats(player), combat.settings()).forEach(player::sendMessage);
+        CombatStatsDisplay.render(combat.statsService().getStats(player), combat.settings())
+                .forEach(player::sendMessage);
         combat.statsService().levelRequirementDisplay(player).forEach(player::sendMessage);
-    }
-
-    @CommandHandler(value = "npc list", permission = "dreamrpg.quests")
-    void npcList(CommandContext context) {
-        context.requireArguments(0);
-        campaign.openExchanges(player(context));
     }
 
     @CommandHandler(value = "npc open", permission = "dreamrpg.quests", usage = "/dreamrpg npc open <NPC UUID>")

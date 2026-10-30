@@ -1,0 +1,50 @@
+# Entries are sorted by order and then by ID. Folder items follow the order listed here.
+entries:
+  ocean_heart_helmet:
+    order: 300
+    items:
+      - starter_armor_helmet
+      - main_village_equipment_ocean_heart_helmet_lv00
+      - main_village_equipment_ocean_heart_helmet_lv01
+      - main_village_equipment_ocean_heart_helmet_lv02
+      - main_village_equipment_ocean_heart_helmet_lv03
+      - main_village_equipment_ocean_heart_helmet_lv04
+      - main_village_equipment_ocean_heart_helmet_lv05
+      - main_village_equipment_ocean_heart_helmet_lv06
+      - main_village_equipment_ocean_heart_helmet_lv07
+  ocean_heart_chestplate:
+    order: 310
+    items:
+      - starter_armor_chestplate
+      - main_village_equipment_ocean_heart_chestplate_lv00
+      - main_village_equipment_ocean_heart_chestplate_lv01
+      - main_village_equipment_ocean_heart_chestplate_lv02
+      - main_village_equipment_ocean_heart_chestplate_lv03
+      - main_village_equipment_ocean_heart_chestplate_lv04
+      - main_village_equipment_ocean_heart_chestplate_lv05
+      - main_village_equipment_ocean_heart_chestplate_lv06
+      - main_village_equipment_ocean_heart_chestplate_lv07
+  ocean_heart_leggings:
+    order: 320
+    items:
+      - starter_armor_leggings
+      - main_village_equipment_ocean_heart_leggings_lv00
+      - main_village_equipment_ocean_heart_leggings_lv01
+      - main_village_equipment_ocean_heart_leggings_lv02
+      - main_village_equipment_ocean_heart_leggings_lv03
+      - main_village_equipment_ocean_heart_leggings_lv04
+      - main_village_equipment_ocean_heart_leggings_lv05
+      - main_village_equipment_ocean_heart_leggings_lv06
+      - main_village_equipment_ocean_heart_leggings_lv07
+  ocean_heart_boots:
+    order: 330
+    items:
+      - starter_armor_boots
+      - main_village_equipment_ocean_heart_boots_lv00
+      - main_village_equipment_ocean_heart_boots_lv01
+      - main_village_equipment_ocean_heart_boots_lv02
+      - main_village_equipment_ocean_heart_boots_lv03
+      - main_village_equipment_ocean_heart_boots_lv04
+      - main_village_equipment_ocean_heart_boots_lv05
+      - main_village_equipment_ocean_heart_boots_lv06
+      - main_village_equipment_ocean_heart_boots_lv07

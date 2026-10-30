@@ -90,7 +90,8 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
     private static void insert(Connection connection, PlayerStorageSnapshot snapshot) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT INTO player_storage (uuid, format_version, inventory_base64, armor_base64, "
-                        + "extra_base64, held_slot, ender_chest_base64, ender_chest_page, version, created_at, updated_at) "
+                        +
+                        "extra_base64, held_slot, ender_chest_base64, ender_chest_page, version, created_at, updated_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             statement.setString(1, snapshot.uniqueId().toString());
@@ -149,7 +150,8 @@ public final class PlayerStorageRepository implements PlayerStorageStore {
                 int updated = statement.executeUpdate();
                 if (updated != 1 || value.vitals() == null) return updated;
                 PlayerVitals vitals = value.vitals();
-                try (PreparedStatement delete = connection.prepareStatement("DELETE FROM player_vitals WHERE uuid = ?")) {
+                try (PreparedStatement delete = connection.prepareStatement(
+                        "DELETE FROM player_vitals WHERE uuid = ?")) {
                     delete.setString(1, value.uniqueId().toString());
                     delete.executeUpdate();
                 }

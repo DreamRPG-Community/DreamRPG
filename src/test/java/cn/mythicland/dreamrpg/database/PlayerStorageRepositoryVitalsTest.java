@@ -19,15 +19,21 @@ class PlayerStorageRepositoryVitalsTest {
     @Test
     void savesAndLoadsVitalsAtomicallyWithInventoryVersion() throws Exception {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite::memory:")) {
-            for (String resource : new String[]{"/db/sqlite/V3__create_player_storage.sql", "/db/sqlite/V6__create_player_vitals.sql"}) {
+            for (String resource : new String[]{"/db/sqlite/V3__create_player_storage.sql",
+                    "/db/sqlite/V6__create_player_vitals.sql"}) {
                 try (var stream = getClass().getResourceAsStream(resource)) {
                     assertNotNull(stream);
                     connection.createStatement().execute(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
                 }
             }
             SqlDatabase database = new SqlDatabase() {
-                @Override public <T> T query(SqlWork<T> work) throws SQLException { return work.execute(connection); }
-                @Override public <T> T transaction(SqlWork<T> work) throws SQLException {
+                @Override
+                public <T> T query(SqlWork<T> work) throws SQLException {
+                    return work.execute(connection);
+                }
+
+                @Override
+                public <T> T transaction(SqlWork<T> work) throws SQLException {
                     connection.setAutoCommit(false);
                     try {
                         T value = work.execute(connection);
@@ -40,9 +46,13 @@ class PlayerStorageRepositoryVitalsTest {
                         connection.setAutoCommit(true);
                     }
                 }
-                @Override public void close() { }
+
+                @Override
+                public void close() {
+                }
             };
-            Constructor<PlayerStorageRepository> constructor = PlayerStorageRepository.class.getDeclaredConstructor(SqlDatabase.class);
+            Constructor<PlayerStorageRepository> constructor =
+                    PlayerStorageRepository.class.getDeclaredConstructor(SqlDatabase.class);
             constructor.setAccessible(true);
             PlayerStorageRepository repository = constructor.newInstance(database);
             UUID id = UUID.randomUUID();
@@ -51,7 +61,8 @@ class PlayerStorageRepositoryVitalsTest {
             PlayerVitals vitals = new PlayerVitals(9.5, 13, 2.5f, 1.25f);
             assertEquals(1, repository.save(initial.withVitals(vitals), 0));
             assertEquals(vitals, repository.loadOrCreate(id).vitals());
-            assertThrows(SQLException.class, () -> repository.save(initial.withVitals(new PlayerVitals(1, 1, 0, 0)), 0));
+            assertThrows(SQLException.class,
+                    () -> repository.save(initial.withVitals(new PlayerVitals(1, 1, 0, 0)), 0));
             assertEquals(vitals, repository.loadOrCreate(id).vitals());
         }
     }

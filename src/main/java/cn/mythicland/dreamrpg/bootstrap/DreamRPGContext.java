@@ -27,7 +27,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+
 import cn.mythicland.dreamworld.api.DreamWorldApi;
+
 import java.util.logging.Level;
 
 /**
@@ -248,7 +250,8 @@ public final class DreamRPGContext implements AutoCloseable {
                 "DreamWorld service is unavailable");
         String logicalName = worlds.findLogicalName(snapped.getWorld()).orElseThrow();
         if (!logicalName.equals(settings().spawn().worldName())) {
-            throw new IllegalArgumentException("Set the main city in DreamRPG/config.yml spawn.world before changing its spawn");
+            throw new IllegalArgumentException(
+                    "Set the main city in DreamRPG/config.yml spawn.world before changing its spawn");
         }
         return worlds.setSpawn(logicalName, snapped).thenApply(ignored -> snapped);
     }

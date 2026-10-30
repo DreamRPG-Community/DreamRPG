@@ -52,7 +52,8 @@ public final class SetSpawnCommand {
         }
         context.setMainSpawn(player.getLocation()).whenComplete((saved, error) -> lib.runOnMain(() -> {
             if (error != null)
-                player.sendMessage(VanillaCommandMessages.red("出生点保存失败: " + DreamLibApi.rootCauseMessage(error)));
+                player.sendMessage(
+                        VanillaCommandMessages.red("出生点保存失败: " + DreamLibApi.rootCauseMessage(error)));
             else player.sendMessage(VanillaCommandMessages.green(formatSuccess(saved)));
         }));
     }

@@ -1,0 +1,14 @@
+# Entries are sorted by order and then by ID. Folder items follow the order listed here.
+entries:
+  other_0:
+    order: 500
+    item: main_village_drop_white_chicken_meat
+  other_1:
+    order: 501
+    item: main_village_material_key
+  other_2:
+    order: 502
+    item: rpg_bai_yu_kao_ji
+  other_3:
+    order: 503
+    item: rpg_ge_bu_lin_de_shou_gu

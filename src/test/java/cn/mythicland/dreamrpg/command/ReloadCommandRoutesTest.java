@@ -25,7 +25,7 @@ class ReloadCommandRoutesTest {
     }
 
     @Test
-    void listsRequireAnExplicitListSubcommand() {
+    void itemListRemainsAvailableWithoutAnNpcDirectory() {
         List<String> paths = java.util.stream.Stream.of(DreamRPGCommand.class, ItemCommands.class)
                 .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
                 .map(method -> method.getAnnotation(CommandHandler.class))
@@ -33,7 +33,8 @@ class ReloadCommandRoutesTest {
                 .map(CommandHandler::value)
                 .toList();
         assertTrue(paths.contains("items list"));
-        assertTrue(paths.contains("npc list"));
+        assertFalse(paths.contains("npc list"));
+        assertTrue(paths.contains("npc open"));
         assertFalse(paths.contains("items"));
         assertFalse(paths.contains("exchanges"));
         assertFalse(paths.contains("stages"));

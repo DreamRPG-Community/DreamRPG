@@ -36,13 +36,15 @@ final class LegacyItemStackNormalizer {
         Map<String, Object> meta = mapValue(stack, "meta", "Meta");
         if (meta == null) return result;
 
-        normalizeTextFields(meta, false, LegacyItemStackNormalizer::toBukkitText, "display-name", "displayName", "name");
+        normalizeTextFields(meta, false, LegacyItemStackNormalizer::toBukkitText, "display-name", "displayName",
+                "name");
         normalizeTextFields(meta, true, LegacyItemStackNormalizer::toBukkitText, "lore", "Lore");
         String display = text(meta, "display-name", "displayName", "name");
         putIfMissing(result, "Display", toMythicText(display));
 
         List<String> lore = strings(value(meta, "lore", "Lore"));
-        putIfMissing(result, "Lore", lore == null ? null : lore.stream().map(LegacyItemStackNormalizer::toMythicText).toList());
+        putIfMissing(result, "Lore",
+                lore == null ? null : lore.stream().map(LegacyItemStackNormalizer::toMythicText).toList());
 
         List<String> enchantments = enchantments(value(meta, "enchants", "enchantments"));
         putIfMissing(result, "Enchantments", enchantments);

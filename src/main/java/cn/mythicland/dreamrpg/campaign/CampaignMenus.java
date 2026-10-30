@@ -26,13 +26,12 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static cn.mythicland.dreamlib.menu.MenuPageLayout.*;
 
 /**
- * Human-facing mainline directory; every action delegates to the authoritative content owner.
+ * NPC offer and administration menus.
  */
 @InjectComponent
 public final class CampaignMenus {
@@ -65,10 +64,6 @@ public final class CampaignMenus {
                 && cursorEmpty && targetEmpty && sameOffer;
     }
 
-    public void openExchanges(Player player) {
-        menus.open(player, new ExchangeDirectory());
-    }
-
     public void openNpc(Player player, UUID npcId) {
         DreamNPCApi npcs = Bukkit.getServicesManager().load(DreamNPCApi.class);
         var npc = npcs.find(npcId).orElse(null);
@@ -76,9 +71,7 @@ public final class CampaignMenus {
             player.sendMessage("§c该NPC当前不可用, 请重新选择。");
             return;
         }
-        menus.open(player, new OfferMenu(npc.name(),
-                () -> catalog.placementsForNpc(npcId),
-                null));
+        menus.open(player, new OfferMenu(npc.name(), () -> catalog.placementsForNpc(npcId)));
     }
 
     public void openNpcEditor(Player player, UUID npcId) {
@@ -177,7 +170,7 @@ public final class CampaignMenus {
                     menus.refresh(player);
                 }
                 if (event.getClick() == ClickType.RIGHT) {
-                    editor.create(player, npc, newTask ? CampaignCatalog.NPC_TASK_STAGE : null, name, this::reopen);
+                    editor.create(player, npc, newTask ? CampaignCatalog.NPC_TASK_STAGE : null, this::reopen);
                 }
                 return;
             }
@@ -257,7 +250,8 @@ public final class CampaignMenus {
 
         private ExchangeOffer sortOffer(ItemStack item) {
             var marker = lib.itemMarkerCodec().read(item, SORT_MARKER).orElse(null);
-            if (marker == null || sortSession == null || !sortSession.equals(marker.values().get("session"))) return null;
+            if (marker == null || sortSession == null || !sortSession.equals(marker.values().get("session")))
+                return null;
             String id = marker.values().get("offer");
             return original.stream().filter(offer -> offer != null && offer.id().equals(id)).findFirst().orElse(null);
         }
@@ -368,13 +362,15 @@ public final class CampaignMenus {
                 parent.reopen(player);
                 return;
             }
-            if (event.getRawSlot() != 24 || (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.SHIFT_LEFT))
+            if (event.getRawSlot() != 24 ||
+                    (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.SHIFT_LEFT))
                 return;
             deleting = true;
             var holder = event.getView().getTopInventory().getHolder();
             catalog.deleteOffer(offer, task).whenComplete((ignored, failure) -> {
                 if (failure != null) {
-                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to delete offer " + offer.id(), failure);
+                    plugin.getLogger()
+                            .log(java.util.logging.Level.SEVERE, "Failed to delete offer " + offer.id(), failure);
                     if (player.isOnline()) player.sendMessage("§c删除失败, 请查看服务器日志。");
                 } else if (player.isOnline()) player.sendMessage("§a已删除。");
                 if (player.isOnline() && player.getOpenInventory().getTopInventory().getHolder() == holder) {
@@ -384,133 +380,20 @@ public final class CampaignMenus {
         }
     }
 
-    private abstract class PagedMenu implements MenuView {
-        int page;
+    private final class OfferMenu implements MenuView {
+        private final String name;
+        private final Supplier<List<ExchangeOffer>> offers;
+        private int page;
+        private List<ExchangeOffer> rendered = List.of();
+
+        OfferMenu(String name, Supplier<List<ExchangeOffer>> offers) {
+            this.name = name;
+            this.offers = offers;
+        }
 
         @Override
         public int size(Player player) {
-            return compactSize(entryCount());
-        }
-
-        abstract int entryCount();
-
-        boolean hasBack() {
-            return true;
-        }
-
-        void footer(Inventory inventory, int total) {
-            PageWindow window = PageWindow.of(total, CONTENT_SLOTS.size(), page);
-            page = window.page();
-            int size = inventory.getSize();
-            if (window.hasPrevious())
-                inventory.setItem(size - 9, MenuItems.button(Material.ARROW, "&a上一页", List.of("&e点击翻页!")));
-            if (hasBack())
-                inventory.setItem(size - 1, MenuItems.button(Material.ARROW, "&a返回", List.of("&7返回上一级", "", "&e点击返回!")));
-            if (window.hasNext()) {
-                int nextSlot = hasBack() ? size - 5 : size - 1;
-                inventory.setItem(nextSlot, MenuItems.button(Material.ARROW, "&a下一页", List.of("&e点击翻页!")));
-            }
-        }
-
-        boolean navigate(Player player, InventoryClickEvent event, int total, Consumer<Player> back) {
-            int slot = event.getRawSlot();
-            int size = event.getView().getTopInventory().getSize();
-            if (event.getClick() != ClickType.LEFT) return false;
-            if (slot == size - 1 && hasBack()) back.accept(player);
-            else if (slot == size - 9 && page > 0) {
-                page--;
-                menus.refresh(player);
-            } else if (slot == (hasBack() ? size - 5 : size - 1)
-                    && (page + 1) * CONTENT_SLOTS.size() < total) {
-                page++;
-                menus.refresh(player);
-            } else return false;
-            return true;
-        }
-
-        int index(int slot) {
-            for (int index = 0; index < CONTENT_SLOTS.size(); index++) {
-                if (CONTENT_SLOTS.get(index) == slot) return page * CONTENT_SLOTS.size() + index;
-            }
-            return -1;
-        }
-    }
-
-    private final class ExchangeDirectory extends PagedMenu {
-        @Override
-        boolean hasBack() {
-            return false;
-        }
-
-        private List<UUID> npcs() {
-            return catalog.offers().stream().map(ExchangeOffer::npc).distinct().toList();
-        }
-
-        @Override
-        int entryCount() {
-            return npcs().size();
-        }
-
-        @Override
-        public String title(Player player) {
-            return "NPC兑换";
-        }
-
-        @Override
-        public void render(Player player, Inventory inventory) {
-            inventory.clear();
-            List<UUID> ids = npcs();
-            footer(inventory, ids.size());
-            DreamNPCApi api = Bukkit.getServicesManager().load(DreamNPCApi.class);
-            forEachEntry(ids, page, (slot, id) -> {
-                String name = api.find(id).map(npc -> npc.name()).orElse(id.toString());
-                inventory.setItem(slot, MenuItems.button(Material.EMERALD, name,
-                        List.of("&7共 &f" + catalog.offersForNpc(id).size() + " &7个项目", "", "&e点击查看!")));
-            });
-        }
-
-        @Override
-        public void handleClick(Player player, InventoryClickEvent event, MenuService menuService) {
-            List<UUID> ids = npcs();
-            if (navigate(player, event, ids.size(), null)) return;
-            int index = index(event.getRawSlot());
-            if (event.getClick() != ClickType.LEFT || index < 0 || index >= ids.size()) return;
-            UUID id = ids.get(index);
-            DreamNPCApi api = Bukkit.getServicesManager().load(DreamNPCApi.class);
-            var npc = api.find(id).orElse(null);
-            if (npc == null) {
-                player.sendMessage("§c该NPC当前不可用。");
-                return;
-            }
-            menus.open(player, new OfferMenu(npc.name(), () -> catalog.placementsForNpc(id), CampaignMenus.this::openExchanges));
-        }
-    }
-
-    private final class OfferMenu extends PagedMenu {
-        private final String name;
-        private final Supplier<List<ExchangeOffer>> offers;
-        // A direct NPC interaction has no parent menu.
-        private final Consumer<Player> back;
-        private List<ExchangeOffer> rendered = List.of();
-
-        OfferMenu(
-                String name,
-                Supplier<List<ExchangeOffer>> offers,
-                Consumer<Player> back
-        ) {
-            this.name = name;
-            this.offers = offers;
-            this.back = back;
-        }
-
-        @Override
-        int entryCount() {
-            return offers.get().size();
-        }
-
-        @Override
-        boolean hasBack() {
-            return back != null;
+            return compactSize(offers.get().size());
         }
 
         @Override
@@ -522,7 +405,13 @@ public final class CampaignMenus {
         public void render(Player player, Inventory inventory) {
             inventory.clear();
             rendered = new ArrayList<>(offers.get());
-            footer(inventory, rendered.size());
+            PageWindow window = PageWindow.of(rendered.size(), CONTENT_SLOTS.size(), page);
+            page = window.page();
+            int size = inventory.getSize();
+            if (window.hasPrevious())
+                inventory.setItem(size - 9, MenuItems.button(Material.ARROW, "&a上一页", List.of("&e点击翻页!")));
+            if (window.hasNext())
+                inventory.setItem(size - 1, MenuItems.button(Material.ARROW, "&a下一页", List.of("&e点击翻页!")));
             forEachEntry(rendered, page, (slot, offer) -> {
                 if (offer != null) inventory.setItem(slot, exchanges.icon(offer));
             });
@@ -530,8 +419,21 @@ public final class CampaignMenus {
 
         @Override
         public void handleClick(Player player, InventoryClickEvent event, MenuService menuService) {
-            if (navigate(player, event, rendered.size(), back)) return;
-            int index = index(event.getRawSlot());
+            int slot = event.getRawSlot();
+            int size = event.getView().getTopInventory().getSize();
+            if (event.getClick() == ClickType.LEFT && slot == size - 9 && page > 0) {
+                page--;
+                menus.refresh(player);
+                return;
+            }
+            if (event.getClick() == ClickType.LEFT && slot == size - 1
+                    && (page + 1) * CONTENT_SLOTS.size() < rendered.size()) {
+                page++;
+                menus.refresh(player);
+                return;
+            }
+            int offset = CONTENT_SLOTS.indexOf(slot);
+            int index = offset < 0 ? -1 : page * CONTENT_SLOTS.size() + offset;
             if (index < 0 || index >= rendered.size() || rendered.get(index) == null) return;
             if (event.getClick() == ClickType.LEFT) exchanges.submit(player, rendered.get(index), false);
             if (event.getClick() == ClickType.SHIFT_LEFT) exchanges.submit(player, rendered.get(index), true);

@@ -107,17 +107,17 @@ class CampaignCatalogTest {
         ExchangeOffer original = CampaignCatalog.parse(yaml).getFirst().tasks().getFirst();
         ExchangeOffer changed = new ExchangeOffer(original.id(), NPC,
                 List.of(new ItemAmount("origin_book", 2)), new ItemAmount("daily_life_book", 3));
-        CampaignCatalog.changeYaml(yaml, original, changed, true, "origin", null);
+        CampaignCatalog.changeYaml(yaml, original, changed, true, "origin");
         assertEquals(changed, CampaignCatalog.parse(yaml).getFirst().tasks().getFirst());
-        assertThrows(IllegalStateException.class, () -> CampaignCatalog.changeYaml(yaml, original, null, true, null, null));
+        assertThrows(IllegalStateException.class, () -> CampaignCatalog.changeYaml(yaml, original, null, true, null));
         ExchangeOffer added = new ExchangeOffer("new_task", NPC,
                 List.of(new ItemAmount("origin_book", 1)), new ItemAmount("daily_life_book", 1));
-        CampaignCatalog.changeYaml(yaml, null, added, true, "origin", null);
-        CampaignCatalog.changeYaml(yaml, changed, null, true, null, null);
+        CampaignCatalog.changeYaml(yaml, null, added, true, "origin");
+        CampaignCatalog.changeYaml(yaml, changed, null, true, null);
         var reloaded = new YamlConfiguration();
         reloaded.loadFromString(yaml.saveToString());
         assertEquals(List.of(added), CampaignCatalog.parse(reloaded).getFirst().tasks());
-        CampaignCatalog.changeYaml(reloaded, added, null, true, null, null);
+        CampaignCatalog.changeYaml(reloaded, added, null, true, null);
         var empty = new YamlConfiguration();
         empty.loadFromString(reloaded.saveToString());
         assertTrue(CampaignCatalog.parse(empty).getFirst().tasks().isEmpty());
@@ -129,11 +129,12 @@ class CampaignCatalogTest {
         yaml.loadFromString("version: 1\nexchanges: {}\n");
         ExchangeOffer offer = new ExchangeOffer("new_offer", NPC,
                 List.of(new ItemAmount("copper", 2)), new ItemAmount("sword", 1));
-        CampaignCatalog.changeYaml(yaml, null, offer, false, null, "商人");
+        CampaignCatalog.changeYaml(yaml, null, offer, false, null);
         var loaded = new YamlConfiguration();
         loaded.loadFromString(yaml.saveToString());
         assertEquals(offer, CampaignCatalog.parseGroups(loaded).getFirst().offers().getFirst());
-        CampaignCatalog.changeYaml(loaded, offer, null, false, null, null);
+        assertFalse(loaded.contains("exchanges.npc_" + NPC.toString().replace("-", "") + ".name"));
+        CampaignCatalog.changeYaml(loaded, offer, null, false, null);
         var empty = new YamlConfiguration();
         empty.loadFromString(loaded.saveToString());
         assertTrue(CampaignCatalog.parseGroups(empty).getFirst().offers().isEmpty());
@@ -145,7 +146,7 @@ class CampaignCatalogTest {
         yaml.loadFromString("version: 2\nstages: {}\n");
         ExchangeOffer offer = new ExchangeOffer("new_task", NPC,
                 List.of(new ItemAmount("origin_book", 1)), new ItemAmount("daily_life_book", 1));
-        CampaignCatalog.changeYaml(yaml, null, offer, true, CampaignCatalog.NPC_TASK_STAGE, null);
+        CampaignCatalog.changeYaml(yaml, null, offer, true, CampaignCatalog.NPC_TASK_STAGE);
         var loaded = new YamlConfiguration();
         loaded.loadFromString(yaml.saveToString());
         assertEquals(List.of(offer), CampaignCatalog.parse(loaded).getFirst().tasks());

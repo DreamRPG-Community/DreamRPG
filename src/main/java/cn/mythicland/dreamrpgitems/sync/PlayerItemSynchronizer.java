@@ -109,7 +109,8 @@ public final class PlayerItemSynchronizer implements DreamLibPluginLifecycle, Li
             synchronizeContents(player);
         } catch (IllegalStateException exception) {
             synchronizationDisabled = true;
-            logger.log(Level.SEVERE, "Player MM item synchronization disabled after an identity bridge failure", exception);
+            logger.log(Level.SEVERE, "Player MM item synchronization disabled after an identity bridge failure",
+                    exception);
         }
     }
 

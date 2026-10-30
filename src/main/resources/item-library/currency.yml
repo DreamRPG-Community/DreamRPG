@@ -1,0 +1,12 @@
+# Entries are sorted by order and then by ID. Folder items follow the order listed here.
+entries:
+  currency:
+    order: 100
+    items:
+      - main_village_currency_copper
+      - main_village_currency_silver
+      - main_village_currency_gold
+      - main_village_currency_diamond
+      - main_village_currency_emerald
+      - main_village_currency_sapphire
+      - main_village_currency_spirit_gem

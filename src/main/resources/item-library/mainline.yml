@@ -1,0 +1,15 @@
+# Entries are sorted by order and then by ID. Folder items follow the order listed here.
+entries:
+  mainline_books:
+    order: 400
+    items:
+      - mainline_book_story_origin
+      - mainline_book_daily_life_01
+      - mainline_book_daily_life_02
+      - mainline_book_daily_life_03
+      - mainline_book_journey_01
+      - mainline_book_journey_02
+      - mainline_book_journey_03
+      - mainline_book_journey_04
+      - mainline_book_journey_05
+      - mainline_book_journey_06

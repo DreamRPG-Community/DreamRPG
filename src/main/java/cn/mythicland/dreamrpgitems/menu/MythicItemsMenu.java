@@ -1,7 +1,9 @@
 package cn.mythicland.dreamrpgitems.menu;
 
-import cn.mythicland.dreamlib.menu.*;
-import cn.mythicland.dreamrpgitems.api.*;
+import cn.mythicland.dreamlib.menu.MenuItems;
+import cn.mythicland.dreamlib.menu.MenuService;
+import cn.mythicland.dreamlib.menu.MenuView;
+import cn.mythicland.dreamlib.menu.PageWindow;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -9,20 +11,28 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import static cn.mythicland.dreamlib.menu.MenuPageLayout.*;
 
 /**
- * Unfiltered item library with a fixed content grid and navigation footer.
+ * Configured item library with expandable folders and a fixed content grid.
  */
 public final class MythicItemsMenu implements MenuView {
     private final MythicItemService service;
+    private final ItemLibraryLayout layout;
+    private final Set<String> expanded = new HashSet<>();
+    private List<ItemLibraryLayout.Row> rendered = List.of();
     private int page;
 
-    public MythicItemsMenu(MythicItemService service) {
-        this.service = service;
+    public MythicItemsMenu(MythicItemService service, ItemLibraryLayout layout) {
+        this.service = Objects.requireNonNull(service, "service");
+        this.layout = Objects.requireNonNull(layout, "layout");
     }
 
     public void open(Player player, MenuService menus) {
@@ -43,14 +53,19 @@ public final class MythicItemsMenu implements MenuView {
     @Override
     public void render(Player player, Inventory inventory) {
         inventory.clear();
-        MythicItemPage result = page();
-        page = result.page();
-        for (int index = 0; index < result.items().size(); index++) {
-            String id = result.items().get(index).internalName();
-            inventory.setItem(CONTENT_SLOTS.get(index), MenuItems.icon(service.getItemStack(id, 1)));
+        rendered = layout.rows(expanded, id -> service.configuration(id).isPresent());
+        PageWindow window = forEachEntry(rendered, page, (slot, row) -> {
+            ItemStack icon = MenuItems.icon(service.getItemStack(row.itemId(), 1));
+            icon.setAmount(row.iconAmount());
+            inventory.setItem(slot, icon);
+        });
+        page = window.page();
+        if (window.hasPrevious()) {
+            inventory.setItem(PREVIOUS_SLOT, MenuItems.button(Material.ARROW, "&a上一页", List.of("&e点击翻页!")));
         }
-        inventory.setItem(PREVIOUS_SLOT, MenuItems.button(Material.ARROW, "&a上一页", List.of("&e点击翻页!")));
-        inventory.setItem(NEXT_SLOT, MenuItems.button(Material.ARROW, "&a下一页", List.of("&e点击翻页!")));
+        if (window.hasNext()) {
+            inventory.setItem(NEXT_SLOT, MenuItems.button(Material.ARROW, "&a下一页", List.of("&e点击翻页!")));
+        }
     }
 
     @Override
@@ -60,30 +75,31 @@ public final class MythicItemsMenu implements MenuView {
             return;
         }
         ClickType click = event.getClick();
-        if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) return;
         int slot = event.getRawSlot();
-        MythicItemPage result = page();
-        if (slot == PREVIOUS_SLOT || slot == NEXT_SLOT) {
-            if (click != ClickType.LEFT) return;
-            PageWindow window = PageWindow.of(result.total(), result.pageSize(), result.page());
-            if (slot == PREVIOUS_SLOT && window.hasPrevious()) page = result.page() - 1;
-            if (slot == NEXT_SLOT && window.hasNext()) page = result.page() + 1;
+        PageWindow window = PageWindow.of(rendered.size(), CONTENT_SLOTS.size(), page);
+        if (click == ClickType.LEFT && slot == PREVIOUS_SLOT && window.hasPrevious()) {
+            page--;
             menus.refresh(player);
             return;
         }
-        int index = CONTENT_SLOTS.indexOf(slot);
-        if (index < 0 || index >= result.items().size()) return;
-        String id = result.items().get(index).internalName();
-        if (click != ClickType.SHIFT_LEFT) return;
-        if (player.getInventory().firstEmpty() == -1) {
-            player.sendMessage(ChatColor.RED + "背包已满, 请先腾出一个位置。");
+        if (click == ClickType.LEFT && slot == NEXT_SLOT && window.hasNext()) {
+            page++;
+            menus.refresh(player);
             return;
         }
-        player.getInventory().addItem(service.getItemStack(id, 1));
+        int offset = CONTENT_SLOTS.indexOf(slot);
+        if (offset < 0) return;
+        int index = window.startIndex() + offset;
+        if (index >= window.endIndex()) return;
+        ItemLibraryLayout.Row row = rendered.get(index);
+        if ((click == ClickType.RIGHT || click == ClickType.SHIFT_RIGHT) && row.folderId() != null) {
+            if (!expanded.add(row.folderId())) expanded.remove(row.folderId());
+            menus.refresh(player);
+            return;
+        }
+        if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) return;
+        if (!player.getInventory().addItem(service.getItemStack(row.itemId(), 1)).isEmpty()) {
+            player.sendMessage(ChatColor.RED + "背包已满, 请先腾出一个位置。");
+        }
     }
-
-    private MythicItemPage page() {
-        return service.search(new MythicItemQuery("", MythicItemSource.ALL, null, page, CONTENT_SLOTS.size()));
-    }
-
 }

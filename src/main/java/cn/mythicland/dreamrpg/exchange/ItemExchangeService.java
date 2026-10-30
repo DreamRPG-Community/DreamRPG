@@ -135,7 +135,8 @@ public final class ItemExchangeService implements DreamLibPluginLifecycle {
         storage.flush(player.getUniqueId()).whenComplete((ignored, failure) -> lib.runOnMain(() -> {
             pending.remove(player);
             if (failure != null)
-                plugin.getLogger().log(Level.SEVERE, "Item exchange persistence failed for " + player.getUniqueId(), failure);
+                plugin.getLogger()
+                        .log(Level.SEVERE, "Item exchange persistence failed for " + player.getUniqueId(), failure);
             if (!enabled || Bukkit.getPlayer(player.getUniqueId()) != player) return;
             if (failure != null) {
                 player.kickPlayer("物品数据保存失败, 请联系管理员后重新登录。");

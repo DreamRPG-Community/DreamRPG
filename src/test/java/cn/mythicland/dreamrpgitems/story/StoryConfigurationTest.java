@@ -26,8 +26,11 @@ class StoryConfigurationTest {
     @Test
     void rejectsInvalidTypesAndOversizedPages() {
         assertThrows(IllegalArgumentException.class, () -> StoryConfiguration.from(Map.of("Story", "wrong")));
-        assertThrows(IllegalArgumentException.class, () -> StoryConfiguration.from(Map.of("Story", Map.of("pages", List.of(1)))));
-        assertThrows(IllegalArgumentException.class, () -> StoryConfiguration.from(Map.of("Story", Map.of("pages", List.of("x".repeat(257))))));
-        assertThrows(IllegalArgumentException.class, () -> new StoryConfiguration(java.util.Collections.nCopies(51, "x")));
+        assertThrows(IllegalArgumentException.class,
+                () -> StoryConfiguration.from(Map.of("Story", Map.of("pages", List.of(1)))));
+        assertThrows(IllegalArgumentException.class,
+                () -> StoryConfiguration.from(Map.of("Story", Map.of("pages", List.of("x".repeat(257))))));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StoryConfiguration(java.util.Collections.nCopies(51, "x")));
     }
 }

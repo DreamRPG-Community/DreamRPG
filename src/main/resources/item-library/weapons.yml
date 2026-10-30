@@ -1,0 +1,12 @@
+# Entries are sorted by order and then by ID. Folder items follow the order listed here.
+entries:
+  demon_slayer:
+    order: 200
+    items:
+      - starter_weapon_wooden_sword
+      - main_village_weapon_seven_foot_demon_slayer_lv02
+      - main_village_weapon_seven_foot_demon_slayer_lv03
+      - main_village_weapon_seven_foot_demon_slayer_lv04
+      - main_village_weapon_seven_foot_demon_slayer_lv05
+      - main_village_weapon_seven_foot_demon_slayer_lv06
+      - main_village_weapon_seven_foot_demon_slayer_lv07

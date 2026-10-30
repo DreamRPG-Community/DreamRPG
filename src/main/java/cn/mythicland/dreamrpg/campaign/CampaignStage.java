@@ -1,6 +1,7 @@
 package cn.mythicland.dreamrpg.campaign;
 
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
+
 import java.util.List;
 
 /**

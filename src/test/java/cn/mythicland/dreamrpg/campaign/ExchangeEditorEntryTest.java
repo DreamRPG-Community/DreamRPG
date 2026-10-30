@@ -1,6 +1,7 @@
 package cn.mythicland.dreamrpg.campaign;
 
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class ExchangeEditorEntryTest {

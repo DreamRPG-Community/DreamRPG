@@ -48,7 +48,8 @@ public final class SpawnService {
      */
     public Location location() {
         String name = settings.worldName();
-        World world = worlds.find(name).orElseThrow(() -> new IllegalStateException("Main spawn world is unavailable: " + name));
+        World world = worlds.find(name)
+                .orElseThrow(() -> new IllegalStateException("Main spawn world is unavailable: " + name));
         return worlds.findSpawn(name)
                 .orElseThrow(() -> new IllegalStateException("DreamWorld/spawns.yml requires a spawn for: " + name))
                 .toLocation(world);

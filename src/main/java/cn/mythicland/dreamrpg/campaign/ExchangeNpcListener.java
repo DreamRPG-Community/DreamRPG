@@ -11,7 +11,9 @@ import org.bukkit.event.Listener;
 public final class ExchangeNpcListener implements Listener {
     private final CampaignMenus menus;
 
-    public ExchangeNpcListener(CampaignMenus menus) { this.menus = menus; }
+    public ExchangeNpcListener(CampaignMenus menus) {
+        this.menus = menus;
+    }
 
     static boolean canOpenEditor(boolean administrator, boolean sneaking) {
         return administrator && sneaking;

@@ -38,7 +38,9 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.function.Consumer;
 
-/** Native-inventory editor for one exchange. */
+/**
+ * Native-inventory editor for one exchange.
+ */
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
@@ -69,12 +71,12 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
     public void open(Player player, ExchangeOffer offer, Consumer<Player> back) {
         String stage = catalog.stages().stream().filter(value -> value.tasks().contains(offer))
                 .map(CampaignStage::id).findFirst().orElse(null);
-        open(player, new Session(offer, offer.id(), offer.npc(), stage, null, back));
+        open(player, new Session(offer, offer.id(), offer.npc(), stage, back));
     }
 
-    public void create(Player player, UUID npc, String stage, String npcName, Consumer<Player> back) {
+    public void create(Player player, UUID npc, String stage, Consumer<Player> back) {
         String id = "entry_" + UUID.randomUUID().toString().replace("-", "");
-        open(player, new Session(null, id, npc, stage, npcName, back));
+        open(player, new Session(null, id, npc, stage, back));
     }
 
     private void open(Player player, Session session) {
@@ -138,7 +140,8 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
         }
         if (event.isCancelled()) return;
         if (event.getAction() == InventoryAction.DROP_ALL_SLOT || event.getAction() == InventoryAction.DROP_ONE_SLOT
-                || event.getAction() == InventoryAction.DROP_ALL_CURSOR || event.getAction() == InventoryAction.DROP_ONE_CURSOR) {
+                || event.getAction() == InventoryAction.DROP_ALL_CURSOR ||
+                event.getAction() == InventoryAction.DROP_ONE_CURSOR) {
             if (raw < 54) session.samples.remove(raw);
             lib.runLater(1L, () -> {
                 if (session(session.inventory, player.getUniqueId()) == session) updateRewardPlaceholder(session);
@@ -217,7 +220,7 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
                 if (session(session.inventory, player.getUniqueId()) != session) return;
                 List<ItemStack> inputs = takeInputs(session);
                 player.closeInventory();
-                catalog.saveOffer(session.offer, replacement, session.stage, session.npcName).whenComplete((ignored, error) -> {
+                catalog.saveOffer(session.offer, replacement, session.stage).whenComplete((ignored, error) -> {
                     if (error != null) {
                         returnItems(player, inputs);
                         plugin.getLogger().log(Level.SEVERE, "Failed to save exchange " + session.id, error);
@@ -302,7 +305,8 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
     }
 
     private ItemAmount identify(ItemStack stack) {
-        var identity = plugin.items().identify(stack).orElseThrow(() -> new IllegalArgumentException("Unidentified item"));
+        var identity =
+                plugin.items().identify(stack).orElseThrow(() -> new IllegalArgumentException("Unidentified item"));
         if (plugin.items().find(identity.internalName()).isEmpty()) throw new IllegalArgumentException("Unknown item");
         return new ItemAmount(identity.internalName(), stack.getAmount());
     }
@@ -322,7 +326,8 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
         for (int slot = 0; slot < 54; slot++) {
             if (!editable(slot)) continue;
             ItemStack item = inventory.getItem(slot);
-            if (!session.samples.contains(slot) && !(slot == REWARD_SLOT && session.rewardPlaceholder) && !empty(item)) {
+            if (!session.samples.contains(slot) && !(slot == REWARD_SLOT && session.rewardPlaceholder) &&
+                    !empty(item)) {
                 items.add(item.clone());
             }
             inventory.setItem(slot, null);
@@ -346,7 +351,6 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
         private final String id;
         private final UUID npc;
         private final String stage;
-        private final String npcName;
         private final Consumer<Player> back;
         private final Set<Integer> samples = new HashSet<>();
         private boolean rewardPlaceholder;
@@ -355,17 +359,18 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
         private boolean saving;
 
         private Session(
-                ExchangeOffer offer, String id, UUID npc, String stage, String npcName, Consumer<Player> back
+                ExchangeOffer offer, String id, UUID npc, String stage, Consumer<Player> back
         ) {
             this.offer = offer;
             this.id = id;
             this.npc = npc;
             this.stage = stage;
-            this.npcName = npcName;
             this.back = back;
         }
 
         @Override
-        public Inventory getInventory() { return inventory; }
+        public Inventory getInventory() {
+            return inventory;
+        }
     }
 }

@@ -32,7 +32,8 @@ class MythicItemApiModelTest {
         source.put("Unknown", "outside");
 
         assertEquals(Map.of("Attributes", List.of("generic.attackDamage")), request.configuration());
-        assertThrows(UnsupportedOperationException.class, () -> ((List<?>) request.configuration().get("Attributes")).clear());
+        assertThrows(UnsupportedOperationException.class,
+                () -> ((List<?>) request.configuration().get("Attributes")).clear());
     }
 
     @Test

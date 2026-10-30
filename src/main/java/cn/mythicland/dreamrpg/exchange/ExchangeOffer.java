@@ -9,7 +9,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Immutable costs and reward; no item definition or player progress is duplicated here. */
+/**
+ * Immutable costs and reward; no item definition or player progress is duplicated here.
+ */
 public record ExchangeOffer(
         String id,
         UUID npc,
@@ -17,14 +19,17 @@ public record ExchangeOffer(
         ItemAmount reward
 ) {
     public ExchangeOffer {
-        if (id == null || !id.matches("[a-z][a-z0-9_-]*")) throw new IllegalArgumentException("Invalid exchange ID: " + id);
+        if (id == null || !id.matches("[a-z][a-z0-9_-]*"))
+            throw new IllegalArgumentException("Invalid exchange ID: " + id);
         if (npc == null) throw new IllegalArgumentException("Exchange requires an NPC: " + id);
         requires = List.copyOf(requires);
         if (requires.isEmpty()) throw new IllegalArgumentException("Exchange requires at least one cost: " + id);
         Objects.requireNonNull(reward, "reward");
     }
 
-    /** Parses one strict offer; the owning group supplies its NPC when the offer does not. */
+    /**
+     * Parses one strict offer; the owning group supplies its NPC when the offer does not.
+     */
     public static ExchangeOffer parse(
             String id,
             ConfigurationSection section,
@@ -32,7 +37,8 @@ public record ExchangeOffer(
     ) {
         if (section == null) throw new IllegalArgumentException("Exchange must be an object: " + id);
         for (String key : section.getKeys(false)) {
-            if (!Set.of("npc", "requires", "reward").contains(key)) throw new IllegalArgumentException("Unknown exchange key: " + id + "." + key);
+            if (!Set.of("npc", "requires", "reward").contains(key))
+                throw new IllegalArgumentException("Unknown exchange key: " + id + "." + key);
         }
         UUID npc = groupNpc;
         if (section.contains("npc")) npc = UUID.fromString(section.getString("npc", ""));
@@ -40,7 +46,8 @@ public record ExchangeOffer(
         if (!(raw instanceof List<?> costs)) throw new IllegalArgumentException("Exchange requires a cost list: " + id);
         List<ItemAmount> requires = new ArrayList<>();
         for (Object cost : costs) {
-            if (!(cost instanceof Map<?, ?> values)) throw new IllegalArgumentException("Exchange cost must contain item and amount: " + id);
+            if (!(cost instanceof Map<?, ?> values))
+                throw new IllegalArgumentException("Exchange cost must contain item and amount: " + id);
             requires.add(amount(values, id + ".requires"));
         }
         ConfigurationSection result = section.getConfigurationSection("reward");

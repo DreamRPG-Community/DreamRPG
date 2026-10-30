@@ -64,7 +64,8 @@ public final class DreamRPGExperienceIntegration implements Listener, AutoClosea
                 .getRegistration(HealthApi.class);
         HealthApi health = healthRegistration == null ? null : healthRegistration.getProvider();
         if (health == null) {
-            plugin.getLogger().warning("DreamRPG HealthApi is unavailable; DreamRPG health will not be shown in stats.");
+            plugin.getLogger()
+                    .warning("DreamRPG HealthApi is unavailable; DreamRPG health will not be shown in stats.");
         }
         return new DreamRPGExperienceIntegration(plugin, registration.getProvider(), health);
     }

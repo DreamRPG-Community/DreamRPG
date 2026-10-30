@@ -131,7 +131,8 @@ public final class MythicItemService implements DreamRPGItemApi {
 
         List<CatalogEntry> matching = catalog.values().stream()
                 .filter(filter)
-                .sorted(Comparator.comparing((CatalogEntry entry) -> entry.summary().materialName(), String.CASE_INSENSITIVE_ORDER)
+                .sorted(Comparator.comparing((CatalogEntry entry) -> entry.summary().materialName(),
+                                String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(entry -> entry.summary().internalName(), String.CASE_INSENSITIVE_ORDER))
                 .toList();
         PageWindow window = PageWindow.of(matching.size(), query.pageSize(), query.page());
@@ -853,7 +854,8 @@ public final class MythicItemService implements DreamRPGItemApi {
                 hits.add(new ReferenceHit(path, relativeFile(path), line));
             }
         } catch (IOException exception) {
-            throw new MythicItemException("REFERENCE_CHECK_FAILED", "无法读取 MM 配置: " + root.relativize(path), exception);
+            throw new MythicItemException("REFERENCE_CHECK_FAILED", "无法读取 MM 配置: " + root.relativize(path),
+                    exception);
         }
     }
 
@@ -990,7 +992,7 @@ public final class MythicItemService implements DreamRPGItemApi {
         MythicItemSummary summary = new MythicItemSummary(
                 item.getInternalName(),
                 relativeFile(sourceFile),
-                managedFile.equals(sourceFile),
+                sourceFile.startsWith(managedFile.getParent()),
                 MythicItemStatus.LOADED,
                 displayName,
                 materialName,
@@ -1003,7 +1005,8 @@ public final class MythicItemService implements DreamRPGItemApi {
         return new CatalogEntry(summary, configuration, rawYaml, item, sourceFile);
     }
 
-    private Map<String, Object> copyItemSection(MythicItem item, Path sourceFile, Map<Path, YamlConfiguration> sources) {
+    private Map<String, Object> copyItemSection(MythicItem item, Path sourceFile,
+            Map<Path, YamlConfiguration> sources) {
         if (Files.isRegularFile(sourceFile, LinkOption.NOFOLLOW_LINKS)) {
             YamlConfiguration configuration = sources.computeIfAbsent(sourceFile,
                     path -> YamlConfiguration.loadConfiguration(path.toFile()));

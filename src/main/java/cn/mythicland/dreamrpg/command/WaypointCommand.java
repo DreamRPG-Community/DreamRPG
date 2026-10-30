@@ -5,7 +5,6 @@ import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
 
 import java.util.Objects;
 
-import cn.mythicland.dreamlib.location.LocationSnapper;
 import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
 import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
 import cn.mythicland.dreamlib.command.CommandContext;
@@ -14,6 +13,7 @@ import cn.mythicland.dreamlib.menu.MenuView;
 import cn.mythicland.dreamlib.menu.MenuService;
 import cn.mythicland.dreamlib.menu.MenuItems;
 import cn.mythicland.dreamworld.api.DreamWorldApi;
+import cn.mythicland.dreamworldregion.api.DreamWorldRegionApi;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Bukkit;
@@ -37,12 +37,15 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
     private final DreamLibApi lib;
     private final JavaPlugin plugin;
     private final DreamWorldApi worlds;
+    private final DreamWorldRegionApi landmarks;
 
     public WaypointCommand(JavaPlugin plugin, DreamLibApi lib) {
         this.lib = lib;
         this.plugin = plugin;
         this.worlds = Objects.requireNonNull(Bukkit.getServicesManager().load(DreamWorldApi.class),
                 "DreamWorld service is required for fixed-map travel");
+        this.landmarks = Objects.requireNonNull(Bukkit.getServicesManager().load(DreamWorldRegionApi.class),
+                "DreamWorld landmark service is required for fixed-map travel");
     }
 
     @Override
@@ -80,19 +83,22 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
         }
         for (String id : entries.getKeys(false)) {
             var entry = entries.getConfigurationSection(id);
-            if (entry == null || !entry.isString("world") || !entry.isString("name")) {
+            if (entry == null || !entry.isString("name")) {
                 throw new IllegalStateException("Invalid waypoint: " + id);
             }
-            boolean useSpawn = !entry.contains("x") && !entry.contains("y") && !entry.contains("z");
-            for (String coordinate : useSpawn ? List.<String>of() : List.of("x", "y", "z")) {
-                if (!(entry.get(coordinate) instanceof Number)) {
-                    throw new IllegalStateException("Missing waypoint coordinate: " + id + "." + coordinate);
-                }
+            boolean useWorld = entry.isString("world");
+            boolean useLandmark = entry.isString("landmark");
+            if (useWorld == useLandmark || List.of("x", "y", "z", "yaw", "pitch").stream().anyMatch(entry::contains)) {
+                throw new IllegalStateException(
+                        "Waypoint requires either a world spawn or a DreamWorld landmark: " + id);
+            }
+            if ((useWorld && entry.getString("world").isBlank())
+                    || (useLandmark && entry.getString("landmark").isBlank())) {
+                throw new IllegalStateException("Waypoint destination cannot be blank: " + id);
             }
             var waypoint = new Waypoint(id, entry.getString("name"), entry.getString("world"),
-                    entry.getDouble("x"), entry.getDouble("y"), entry.getDouble("z"),
-                    (float) entry.getDouble("yaw"), (float) entry.getDouble("pitch"), entry.getBoolean("enabled", true),
-                    entry.getBoolean("show-in-menu", true), useSpawn);
+                    entry.getString("landmark"), entry.getBoolean("enabled", true),
+                    entry.getBoolean("show-in-menu", true));
             put(id, waypoint);
             for (String alias : entry.getStringList("aliases")) {
                 put(alias, waypoint);
@@ -133,14 +139,35 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
         if (lib.playerLoadingGate().isLoading(player)) {
             return;
         }
-        var world = worlds.find(point.world()).orElse(null);
-        if (!point.enabled() || world == null) {
+        if (!point.enabled()) {
             player.sendMessage(LegacyText.colorize("&e该地点尚未开放，正在等待地图恢复。"));
             return;
         }
-        Location destination = point.useSpawn()
-                ? worlds.findSpawn(point.world()).orElseThrow(() -> new IllegalStateException("Missing world spawn: " + point.world())).toLocation(world)
-                : new Location(world, point.x(), point.y(), point.z(), point.yaw(), point.pitch());
+        if (point.landmark() != null) {
+            var landmark = landmarks.findLandmark(point.landmark())
+                    .orElseThrow(() -> new IllegalStateException("Missing DreamWorld landmark: " + point.landmark()));
+            if (worlds.find(landmark.worldName()).isEmpty()) {
+                player.sendMessage(LegacyText.colorize("&e该地点尚未开放，正在等待地图恢复。"));
+                return;
+            }
+            landmarks.teleport(player, point.landmark()).whenComplete((success, error) -> lib.runOnMain(() -> {
+                if (!plugin.isEnabled() || !player.isOnline()) return;
+                if (error != null) {
+                    plugin.getLogger()
+                            .log(java.util.logging.Level.WARNING, "Waypoint teleport failed: " + point.id(), error);
+                    player.sendMessage(LegacyText.colorize("&c传送失败，请稍后再试。"));
+                } else if (success) player.sendMessage(LegacyText.colorize("&a已抵达 " + point.name()));
+            }));
+            return;
+        }
+        var world = worlds.find(point.world()).orElse(null);
+        if (world == null) {
+            player.sendMessage(LegacyText.colorize("&e该地点尚未开放，正在等待地图恢复。"));
+            return;
+        }
+        Location destination = worlds.findSpawn(point.world())
+                .orElseThrow(() -> new IllegalStateException("Missing world spawn: " + point.world()))
+                .toLocation(world);
         if (player.teleport(destination)) {
             player.sendMessage(LegacyText.colorize("&a已抵达 " + point.name()));
         }
@@ -198,22 +225,9 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
             String id,
             String name,
             String world,
-            double x,
-            double y,
-            double z,
-            float yaw,
-            float pitch,
+            String landmark,
             boolean enabled,
-            boolean showInMenu,
-            boolean useSpawn
+            boolean showInMenu
     ) {
-        private Waypoint {
-            if (!Float.isFinite(pitch)) throw new IllegalArgumentException("Waypoint pitch must be finite");
-            x = LocationSnapper.snapHorizontalCoordinate(x);
-            y = LocationSnapper.snapStandingHeight(y);
-            z = LocationSnapper.snapHorizontalCoordinate(z);
-            yaw = LocationSnapper.snapYaw(yaw);
-            pitch = 0.0F;
-        }
     }
 }

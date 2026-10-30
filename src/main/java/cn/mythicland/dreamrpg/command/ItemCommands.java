@@ -10,7 +10,6 @@ import cn.mythicland.dreamrpgitems.menu.MythicItemsMenu;
 import org.bukkit.entity.Player;
 
 
-
 /**
  * Item operations registered under DreamRPG's single command router.
  */
@@ -33,7 +32,13 @@ abstract class ItemCommands {
     @CommandHandler(value = "items list", permission = "dreamrpg.admin")
     void items(CommandContext context) {
         context.requireArguments(0);
-        new MythicItemsMenu(plugin.items()).open(player(context), lib.menuService());
+        Player player = player(context);
+        var layout = plugin.itemLibrary().layout().orElse(null);
+        if (layout == null) {
+            player.sendMessage(LegacyText.colorize("&c物品库配置正在加载, 请稍候。"));
+            return;
+        }
+        new MythicItemsMenu(plugin.items(), layout).open(player, lib.menuService());
     }
 
     @CommandHandler(value = "items sync", permission = "dreamrpg.admin")

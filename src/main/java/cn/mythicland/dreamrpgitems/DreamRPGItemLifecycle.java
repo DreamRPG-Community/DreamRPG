@@ -8,6 +8,7 @@ import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
 import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
 import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
 import cn.mythicland.dreamrpgitems.api.MythicItemQuery;
+import cn.mythicland.dreamrpgitems.menu.ItemLibraryConfiguration;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
 import cn.mythicland.dreamrpgitems.web.DreamRPGItemWebServer;
 import io.lumine.xikage.mythicmobs.MythicMobs;
@@ -33,6 +34,7 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
     private final PluginTaskScope tasks;
     private final MythicItemService itemService;
     private final DreamRPGItemConfiguration configuration;
+    private final ItemLibraryConfiguration libraryConfiguration;
     private MythicMobs mythicMobs;
     private DreamRPGItemWebServer webServer;
     private BukkitTask itemRefreshTask;
@@ -50,13 +52,15 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
             DreamLibApi lib,
             PluginTaskScope tasks,
             MythicItemService itemService,
-            DreamRPGItemConfiguration configuration
+            DreamRPGItemConfiguration configuration,
+            ItemLibraryConfiguration libraryConfiguration
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.lib = Objects.requireNonNull(lib, "lib");
         this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.itemService = Objects.requireNonNull(itemService, "itemService");
         this.configuration = Objects.requireNonNull(configuration, "configuration");
+        this.libraryConfiguration = Objects.requireNonNull(libraryConfiguration, "libraryConfiguration");
     }
 
     private static String generateToken() {
@@ -75,6 +79,7 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
                 "MythicMobs is not enabled"
         );
         itemService.initialize();
+        libraryConfiguration.reload();
 
         webServer = new DreamRPGItemWebServer(plugin, lib);
         configureWeb();
@@ -95,6 +100,7 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
         if (!result.success()) {
             throw new IllegalStateException("Cannot reload MythicMobs items: " + result.message());
         }
+        libraryConfiguration.reload();
     }
 
     /**
@@ -102,6 +108,7 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
      */
     @Override
     public void disable() {
+        libraryConfiguration.close();
         tasks.cancel(itemRefreshTask);
         itemRefreshTask = null;
         if (webServer != null) webServer.close();
@@ -118,6 +125,7 @@ public final class DreamRPGItemLifecycle implements DreamLibPluginLifecycle, Lis
     public void handleMythicReload(MythicReloadedEvent event) {
         if (event.getInstance() != mythicMobs) return;
         itemService.refreshAfterMythicReload();
+        libraryConfiguration.warnMissingItems();
         plugin.getLogger().info(
                 DreamRPGPlugin.DISPLAY_NAME + " refreshed its MM item catalog after MythicMobs reload."
         );

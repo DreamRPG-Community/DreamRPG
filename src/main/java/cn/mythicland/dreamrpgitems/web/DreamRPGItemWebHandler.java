@@ -374,7 +374,8 @@ public final class DreamRPGItemWebHandler extends AuthenticatedHttpHandler {
             Throwable cause = exception.getCause() == null ? exception : exception.getCause();
             if (cause instanceof MythicItemException domain) throw domainError(domain);
             if (cause instanceof WebException web) throw web;
-            throw new WebException(500, "DOMAIN_FAILURE", cause.getMessage() == null ? "业务处理失败" : cause.getMessage());
+            throw new WebException(500, "DOMAIN_FAILURE",
+                    cause.getMessage() == null ? "业务处理失败" : cause.getMessage());
         } catch (TimeoutException exception) {
             throw new WebException(503, "MAIN_THREAD_TIMEOUT", "主线程处理超时");
         }

@@ -38,8 +38,10 @@ class LegacyItemStackNormalizerTest {
         assertEquals(List.of("INFINITY:1"), result.get("Enchantments"));
         assertEquals(List.of("HIDE_ATTRIBUTES"), result.get("Hide"));
         assertEquals(true, result.get("Unbreakable"));
-        assertEquals("§c§l示例物品", ((Map<?, ?>) ((Map<?, ?>) result.get("ItemStack")).get("meta")).get("display-name"));
-        assertEquals(List.of("§a第一行", "§7第二行"), ((Map<?, ?>) ((Map<?, ?>) result.get("ItemStack")).get("meta")).get("lore"));
+        assertEquals("§c§l示例物品",
+                ((Map<?, ?>) ((Map<?, ?>) result.get("ItemStack")).get("meta")).get("display-name"));
+        assertEquals(List.of("§a第一行", "§7第二行"),
+                ((Map<?, ?>) ((Map<?, ?>) result.get("ItemStack")).get("meta")).get("lore"));
     }
 
     @Test

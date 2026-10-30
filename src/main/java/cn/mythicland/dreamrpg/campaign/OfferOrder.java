@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Per-NPC placement of task and exchange IDs; empty strings represent empty slots. */
+/**
+ * Per-NPC placement of task and exchange IDs; empty strings represent empty slots.
+ */
 final class OfferOrder {
     private OfferOrder() {
     }
@@ -21,7 +23,8 @@ final class OfferOrder {
         Set<String> seen = new HashSet<>();
         List<ExchangeOffer> slots = new ArrayList<>();
         for (String id : saved) {
-            if (!id.isEmpty() && !seen.add(id)) throw new IllegalArgumentException("Duplicate offer ID in order: " + id);
+            if (!id.isEmpty() && !seen.add(id))
+                throw new IllegalArgumentException("Duplicate offer ID in order: " + id);
             slots.add(id.isEmpty() ? null : remaining.remove(id));
         }
         for (ExchangeOffer offer : offers) {

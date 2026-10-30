@@ -138,7 +138,8 @@ public final class EnderChestService implements Listener, AutoCloseable {
         }
         boolean open = openMenus.containsKey(player.getUniqueId());
         Inventory inventory = open ? player.getOpenInventory().getTopInventory() : null;
-        ItemStack[] contents = open ? inventory.getContents() : storage.findLoaded(player.getUniqueId()).orElseThrow().enderChest();
+        ItemStack[] contents =
+                open ? inventory.getContents() : storage.findLoaded(player.getUniqueId()).orElseThrow().enderChest();
         boolean changed = false;
         int stale = 0;
         for (int slot = 0; slot < contents.length; slot++) {
@@ -155,7 +156,8 @@ public final class EnderChestService implements Listener, AutoCloseable {
                 player.updateInventory();
             }
         }
-        if (stale > 0) logger.warning("Kept " + stale + " stale items in " + player.getName() + "'s custom ender chest");
+        if (stale > 0)
+            logger.warning("Kept " + stale + " stale items in " + player.getName() + "'s custom ender chest");
     }
 
     @Override

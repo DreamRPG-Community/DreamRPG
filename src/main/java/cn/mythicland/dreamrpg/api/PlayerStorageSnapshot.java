@@ -41,8 +41,8 @@ public record PlayerStorageSnapshot(
      * Retains the original inventory-only constructor for existing callers.
      */
     public PlayerStorageSnapshot(UUID uniqueId, ItemStack[] inventory, ItemStack[] armor, ItemStack offHand,
-                                 int heldSlot, ItemStack[] enderChest, int enderChestPage,
-                                 int formatVersion, long databaseVersion) {
+            int heldSlot, ItemStack[] enderChest, int enderChestPage,
+            int formatVersion, long databaseVersion) {
         this(uniqueId, inventory, armor, offHand, heldSlot, enderChest, enderChestPage, formatVersion,
                 databaseVersion, null);
     }

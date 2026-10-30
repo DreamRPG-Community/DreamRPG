@@ -26,7 +26,7 @@ class OfferOrderTest {
         List<ExchangeOffer> slots = Arrays.asList(exchange, null, task);
         List<String> ids = OfferOrder.identifiers(slots);
         var yaml = new YamlConfiguration();
-        yaml.set(NPC.toString(), ids);
+        yaml.set("offer-order." + NPC, ids);
         var reloaded = new YamlConfiguration();
         reloaded.loadFromString(yaml.saveToString());
         assertEquals(Arrays.asList(exchange, null, task, added),
@@ -40,7 +40,21 @@ class OfferOrderTest {
                 () -> OfferOrder.resolve(List.of(offer("task")), List.of("task", "task")));
         assertEquals(List.of("", "task"), OfferOrder.identifiers(Arrays.asList(null, offer("task"), null)));
         var yaml = new YamlConfiguration();
-        yaml.set(NPC.toString(), List.of("task", "task"));
+        yaml.set("offer-order." + NPC, List.of("task", "task"));
         assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parseOrders(yaml));
+    }
+
+    @Test
+    void orderSectionPreservesExchangeDefinitionsAndRejectsInvalidSections() {
+        var yaml = new YamlConfiguration();
+        yaml.set("version", 1);
+        yaml.set("exchanges.example.name", "Example");
+        yaml.set("offer-order." + NPC, List.of("", "task"));
+        assertEquals(List.of("", "task"), CampaignCatalog.parseOrders(yaml).get(NPC));
+        assertEquals("Example", yaml.getString("exchanges.example.name"));
+        yaml.set("offer-order", "invalid");
+        assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parseOrders(yaml));
+        yaml.set("offer-order", null);
+        assertTrue(CampaignCatalog.parseOrders(yaml).isEmpty());
     }
 }
