@@ -1,18 +1,28 @@
 package cn.mythicland.dreamrpg.display;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.PlayerProfile;
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.config.DreamRPGSettings;
 import cn.mythicland.dreamrpg.config.ScoreboardSettings;
+import cn.mythicland.dreamrpg.member.MemberAccessService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.integration.PlayerPointsService;
-import cn.mythicland.dreamlib.loading.PlayerLoadingGate;
-import cn.mythicland.dreamlib.scoreboard.ScoreboardSession;
-import cn.mythicland.dreamlib.text.LegacyText;
-import cn.mythicland.dreamlib.text.TemplateRenderer;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.integration.PlayerPointsService;
+import cn.mythicland.framework.bukkit.player.PlayerLoadingGate;
+import cn.mythicland.framework.bukkit.scoreboard.ScoreboardSession;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.bukkit.text.TemplateRenderer;
+import cn.mythicland.framework.component.InjectComponent;
+
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
@@ -21,13 +31,6 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Team;
-
-import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
 
 /**
  * Owns DreamRPG player presentation, TAB/head teams, and the standalone sidebar scoreboard.
@@ -41,6 +44,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     private final JavaPlugin plugin;
     private final DreamLibApi lib;
     private final PlayerProfileService profiles;
+    private final MemberAccessService members;
     private final TemplateRenderer templates;
     private final CoinService coins;
     private final PlayerPointsService points;
@@ -48,6 +52,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     private final PlayerLoadingGate loadingGate;
     private final Map<UUID, ScoreboardSession> sessions = new HashMap<>();
     private final Map<UUID, TabHeaderFooter> tabHeaderFooters = new HashMap<>();
+    private final Map<UUID, String> memberPrefixes = new HashMap<>();
     private final Set<String> nameTagOverflowWarnings = new HashSet<>();
     private ScoreboardSettings settings;
     private DreamRPGSettings.DisplaySettings displaySettings;
@@ -67,6 +72,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
             JavaPlugin plugin,
             DreamRPGContext context,
             PlayerProfileService profiles,
+            MemberAccessService members,
             CoinService coins,
             WorldLocationService locations,
             PlayerLoadingGate loadingGate
@@ -75,6 +81,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         DreamRPGContext initializedContext = Objects.requireNonNull(context, "context");
         this.lib = initializedContext.lib();
         this.profiles = Objects.requireNonNull(profiles, "profiles");
+        this.members = Objects.requireNonNull(members, "members");
         this.templates = initializedContext.templates();
         this.coins = Objects.requireNonNull(coins, "coins");
         this.points = this.lib.playerPointsService();
@@ -137,7 +144,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     }
 
     private static void ensureMainThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Display update must run on the main thread");
+        MainThread.require("Display update must run on the main thread");
     }
 
     /**
@@ -151,6 +158,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         for (Player player : onlinePlayers) {
             PlayerProfile profile = profiles.getProfile(player.getUniqueId());
             onlineProfiles.put(player.getUniqueId(), profile);
+            memberPrefixes.put(player.getUniqueId(), members.prefix(player));
             applyHealthDisplayScale(player);
             applyPlayerName(player, profile);
         }
@@ -244,6 +252,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         Objects.requireNonNull(player, "player");
         ScoreboardSession session = sessions.remove(player.getUniqueId());
         if (session != null) session.close();
+        memberPrefixes.remove(player.getUniqueId());
         clearPlayerPresentation(player);
         refreshAll();
     }
@@ -259,6 +268,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
             clearPlayerPresentation(player);
         }
         tabHeaderFooters.clear();
+        memberPrefixes.clear();
         closeScoreboardSessions();
     }
 
@@ -309,6 +319,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         values.put("career", profile.career().displayName());
         values.put("career_id", profile.careerId());
         values.put("prefix", profile.career().prefix());
+        values.put("member_prefix", memberPrefixes.getOrDefault(viewer.getUniqueId(), "&7[玩家]"));
         if (template.contains("{time}")) {
             values.put(
                     "time",
@@ -331,7 +342,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     }
 
     private String renderPlayerListName(Player player, PlayerProfile profile) {
-        String template = displaySettings.tab().playerNameFormat();
+        String template = withMemberPrefix(displaySettings.tab().playerNameFormat());
         String coloredName = profile.career().nameColor() + player.getName();
         return templates.render(
                 template,
@@ -341,7 +352,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     }
 
     private NameTagParts renderNameTag(Player player, PlayerProfile profile) {
-        String template = displaySettings.nameTagFormat();
+        String template = withMemberPrefix(displaySettings.nameTagFormat());
         String markerName = profile.career().nameColor() + NAME_TAG_MARKER;
         String rendered = templates.render(
                 template,
@@ -372,7 +383,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
                     "DreamRPG name-tag " + partName + " for " + player.getName()
                             + " exceeds Paper 1.12.2's 16-character scoreboard limit; "
                             + "the value will be truncated. Shorten display.name-tag-format "
-                            + "or its PlaceholderAPI prefix."
+                            + "or the membership prefix."
             );
         }
         String truncated = value.substring(0, 16);
@@ -421,6 +432,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("player", viewer.getName());
         values.put("name", viewer.getName());
+        values.put("member_prefix", memberPrefixes.getOrDefault(viewer.getUniqueId(), "&7[玩家]"));
         if (template.contains("{time}")) {
             values.put(
                     "time",
@@ -442,6 +454,12 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         String playerListName = renderPlayerListName(player, profile);
         if (!playerListName.equals(player.getPlayerListName())) player.setPlayerListName(playerListName);
         applyTabHeaderFooter(player, profile);
+    }
+
+    private static String withMemberPrefix(String template) {
+        String resolved = template.replace("%luckperms_prefix%", "{member_prefix}");
+        if (resolved.contains("{member_prefix}")) return resolved;
+        return "{member_prefix} " + resolved;
     }
 
     private void clearPlayerPresentation(Player player) {

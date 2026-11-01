@@ -1,9 +1,9 @@
 package cn.mythicland.dreamrpg.experience;
 
 import cn.mythicland.dreamrpg.api.ExperienceGrantRequest;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -105,7 +105,7 @@ public final class ExperienceEventListener implements Listener {
         if (label.equals("xp") || label.equals("experience")
                 || label.equals("minecraft:xp") || label.equals("minecraft:experience")) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage("请使用 DreamRPG 经验接口修改经验。");
+            event.getPlayer().sendMessage("§c请使用 DreamRPG 经验接口修改经验。");
         }
     }
 }

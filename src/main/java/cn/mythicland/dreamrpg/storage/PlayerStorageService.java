@@ -1,19 +1,15 @@
 package cn.mythicland.dreamrpg.storage;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.api.PlayerStorageApi;
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.api.PlayerVitals;
 import cn.mythicland.dreamrpg.database.PlayerStorageStore;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
-import cn.mythicland.dreamlib.storage.VersionedPlayerSession;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.scheduler.BukkitTask;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.storage.VersionedPlayerSession;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -22,6 +18,12 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.scheduler.BukkitTask;
 
 /**
  * Coordinates asynchronous player storage loads, main-thread application, and versioned saves.
@@ -65,7 +67,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
     }
 
     private static void ensurePrimaryThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Player storage requires the main thread");
+        MainThread.require("Player storage requires the main thread");
     }
 
     /**
@@ -147,20 +149,16 @@ public final class PlayerStorageService implements PlayerStorageApi {
     }
 
     /**
-     * Applies stored vitals after the level-based maximum health is initialized.
+     * Restores full health, hunger, and saturation after the player's RPG maximum health is initialized.
      */
     @SuppressWarnings("deprecation")
-    public void applyVitals(Player player) {
+    public void restoreFullVitals(Player player) {
         ensurePrimaryThread();
         Player target = Objects.requireNonNull(player, "player");
-        PlayerVitals vitals = session(target.getUniqueId()).snapshot().vitals();
-        if (vitals == null) return;
-        double health = vitals.health();
-        if (health <= 0) health = target.getMaxHealth();
-        target.setHealth(Math.min(health, target.getMaxHealth()));
-        target.setFoodLevel(vitals.foodLevel());
-        target.setSaturation(vitals.saturation());
-        target.setExhaustion(vitals.exhaustion());
+        target.setHealth(target.getMaxHealth());
+        target.setFoodLevel(20);
+        target.setSaturation(20.0F);
+        target.setExhaustion(0.0F);
     }
 
     /**

@@ -1,25 +1,19 @@
 package cn.mythicland.dreamrpg.starter;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.database.FirstJoinRewardClaimRepository;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
+import cn.mythicland.dreamrpgitems.api.DreamRPGItemApi;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshMode;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshResult;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshStatus;
 import cn.mythicland.dreamrpgitems.api.MythicItemsChangedEvent;
 import cn.mythicland.dreamrpgitems.api.MythicItemsSyncRequestedEvent;
-import cn.mythicland.dreamrpgitems.api.DreamRPGItemApi;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.text.LegacyText;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.inventory.ItemStack;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,6 +26,13 @@ import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.inventory.ItemStack;
+
 /**
  * Coordinates first-join reward loading, one-time claim reservation, and the administrator editor.
  */
@@ -41,7 +42,7 @@ public final class FirstJoinRewardService implements Listener, AutoCloseable {
 
     private final DreamLibApi lib;
     private final PluginTaskScope tasks;
-    private final MenuService menus;
+    private final MenuManager menus;
     private final FirstJoinRewardStore store;
     private final FirstJoinRewardClaimRepository claims;
     private final Logger logger;
@@ -67,7 +68,7 @@ public final class FirstJoinRewardService implements Listener, AutoCloseable {
     public FirstJoinRewardService(
             DreamLibApi lib,
             PluginTaskScope tasks,
-            MenuService menus,
+            MenuManager menus,
             FirstJoinRewardStore store,
             FirstJoinRewardClaimRepository claims,
             Logger logger

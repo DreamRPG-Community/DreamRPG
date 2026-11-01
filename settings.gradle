@@ -7,6 +7,8 @@ pluginManagement {
     }
 }
 
+apply from: file("../../../../MythicLand/plugins/MythicFramework/gradle/workspace-build-lock.gradle")
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
@@ -25,6 +27,12 @@ dependencyResolutionManagement {
 includeBuild("../DreamLib") {
     dependencySubstitution {
         substitute module("self-written:DreamLib") using project(":")
+    }
+}
+
+includeBuild("../../../../MythicLand/plugins/MythicMemberLib") {
+    dependencySubstitution {
+        substitute module("cn.mythicland:mythic-memberlib") using project(":")
     }
 }
 

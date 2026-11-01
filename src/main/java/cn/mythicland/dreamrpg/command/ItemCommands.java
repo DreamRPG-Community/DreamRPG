@@ -1,14 +1,13 @@
 package cn.mythicland.dreamrpg.command;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.campaign.CampaignMenus;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.dreamlib.command.CommandContext;
-import cn.mythicland.dreamlib.text.LegacyText;
 import cn.mythicland.dreamrpgitems.menu.MythicItemsMenu;
+import cn.mythicland.framework.bukkit.command.CommandContext;
+import cn.mythicland.framework.bukkit.command.CommandRoute;
+import cn.mythicland.framework.bukkit.text.LegacyText;
 import org.bukkit.entity.Player;
-
 
 /**
  * Item operations registered under DreamRPG's single command router.
@@ -29,7 +28,7 @@ abstract class ItemCommands {
         throw invalid(context, "此操作需要在游戏内执行");
     }
 
-    @CommandHandler(value = "items list", permission = "dreamrpg.admin")
+    @CommandRoute(path = {"dreamrpg", "items", "list"}, maxArguments = Integer.MAX_VALUE, permission = "dreamrpg.admin")
     void items(CommandContext context) {
         context.requireArguments(0);
         Player player = player(context);
@@ -41,7 +40,7 @@ abstract class ItemCommands {
         new MythicItemsMenu(plugin.items(), layout).open(player, lib.menuService());
     }
 
-    @CommandHandler(value = "items sync", permission = "dreamrpg.admin")
+    @CommandRoute(path = {"dreamrpg", "items", "sync"}, maxArguments = Integer.MAX_VALUE, permission = "dreamrpg.admin")
     void synchronize(CommandContext context) {
         context.requireArguments(0);
         var result = plugin.items().synchronizeAll();

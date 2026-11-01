@@ -1,18 +1,24 @@
 package cn.mythicland.dreamrpg.campaign;
 
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.menu.MenuItems;
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.menu.MenuView;
-import cn.mythicland.dreamlib.menu.StatefulMenuView;
-import cn.mythicland.dreamlib.item.ItemMarker;
-import cn.mythicland.dreamlib.menu.PageWindow;
-import cn.mythicland.dreamlib.text.LegacyText;
 import cn.mythicland.dreamnpc.api.DreamNPCApi;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
 import cn.mythicland.dreamrpg.exchange.ItemExchangeService;
+import cn.mythicland.framework.bukkit.item.ItemMarker;
+import cn.mythicland.framework.bukkit.menu.InventoryMenu;
+import cn.mythicland.framework.bukkit.menu.MenuItems;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.pagination.PageWindow;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Supplier;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -22,13 +28,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Supplier;
-
-import static cn.mythicland.dreamlib.menu.MenuPageLayout.*;
+import static cn.mythicland.framework.pagination.MenuPageLayout.*;
 
 /**
  * NPC offer and administration menus.
@@ -39,7 +39,7 @@ public final class CampaignMenus {
     private final DreamLibApi lib;
     private final CampaignCatalog catalog;
     private final ItemExchangeService exchanges;
-    private final MenuService menus;
+    private final MenuManager menus;
     private final ExchangeEditor editor;
 
     public CampaignMenus(
@@ -85,7 +85,7 @@ public final class CampaignMenus {
         menus.open(player, new NpcEditor(npcId, npc.name()));
     }
 
-    private final class NpcEditor implements StatefulMenuView {
+    private final class NpcEditor extends InventoryMenu {
         private static final String SORT_MARKER = "DreamRPGOfferSort";
         private final UUID npc;
         private final String name;
@@ -108,7 +108,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public String title(Player player) {
+        public String buildTitle(Player player) {
             return LegacyText.colorize(name + " &8· 编辑");
         }
 
@@ -152,7 +152,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public void handleClick(Player player, InventoryClickEvent event, MenuService service) {
+        public void handleClick(Player player, InventoryClickEvent event, MenuManager service) {
             if (!player.hasPermission("dreamrpg.admin")) {
                 menus.close(player);
                 return;
@@ -287,7 +287,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public void handleDrag(Player player, InventoryDragEvent event, MenuService service) {
+        public void handleDrag(Player player, InventoryDragEvent event, MenuManager service) {
             if (sortingSlots == null || sortSaving || !player.hasPermission("dreamrpg.admin")) return;
             if (event.getNewItems().size() != 1) return;
             ItemStack oldCursor = event.getOldCursor();
@@ -317,7 +317,7 @@ public final class CampaignMenus {
         }
     }
 
-    private final class DeleteConfirmation implements MenuView {
+    private final class DeleteConfirmation extends InventoryMenu {
         private final NpcEditor parent;
         private final ExchangeOffer offer;
         private final boolean task;
@@ -330,7 +330,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public String title(Player player) {
+        public String buildTitle(Player player) {
             return "确认?";
         }
 
@@ -352,7 +352,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public void handleClick(Player player, InventoryClickEvent event, MenuService service) {
+        public void handleClick(Player player, InventoryClickEvent event, MenuManager service) {
             if (!player.hasPermission("dreamrpg.admin")) {
                 menus.close(player);
                 return;
@@ -380,7 +380,7 @@ public final class CampaignMenus {
         }
     }
 
-    private final class OfferMenu implements MenuView {
+    private final class OfferMenu extends InventoryMenu {
         private final String name;
         private final Supplier<List<ExchangeOffer>> offers;
         private int page;
@@ -397,7 +397,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public String title(Player player) {
+        public String buildTitle(Player player) {
             return LegacyText.colorize(name);
         }
 
@@ -418,7 +418,7 @@ public final class CampaignMenus {
         }
 
         @Override
-        public void handleClick(Player player, InventoryClickEvent event, MenuService menuService) {
+        public void handleClick(Player player, InventoryClickEvent event, MenuManager menuService) {
             int slot = event.getRawSlot();
             int size = event.getView().getTopInventory().getSize();
             if (event.getClick() == ClickType.LEFT && slot == size - 9 && page > 0) {

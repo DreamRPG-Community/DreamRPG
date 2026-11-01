@@ -1,20 +1,21 @@
 package cn.mythicland.dreamrpg.command;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandCompleter;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.dreamlib.command.CommandContext;
-import cn.mythicland.dreamlib.command.VanillaCommandMessages;
+import cn.mythicland.framework.bukkit.command.CommandBinding;
+import cn.mythicland.framework.bukkit.command.CommandCompleter;
+import cn.mythicland.framework.bukkit.command.CommandContext;
+import cn.mythicland.framework.bukkit.command.CommandRoute;
+import cn.mythicland.framework.bukkit.command.VanillaCommandMessages;
+
+import java.util.List;
+
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 
-import java.util.List;
-
 /**
  * Handles the administrator shorthand for changing a player's own game mode.
  */
-@CommandComponent(
+@CommandBinding(
         value = "gm",
         permission = "dreamrpg.admin",
         takeOverGlobalMapping = true
@@ -34,7 +35,7 @@ public final class GameModeCommand {
         };
     }
 
-    @CommandHandler(usage = USAGE)
+    @CommandRoute(path = {"gm"}, maxArguments = Integer.MAX_VALUE, usages = USAGE)
     void change(CommandContext context) {
         context.requireArguments(1);
         if (!(context.sender() instanceof Player player)) {

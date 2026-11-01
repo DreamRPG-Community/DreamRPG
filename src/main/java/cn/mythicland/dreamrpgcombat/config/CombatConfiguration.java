@@ -1,11 +1,11 @@
 package cn.mythicland.dreamrpgcombat.config;
 
 import cn.mythicland.dreamrpgcombat.lore.CombatStat;
-import cn.mythicland.dreamlib.bootstrap.annotation.ConfigComponent;
-import cn.mythicland.dreamlib.config.ConfigValue;
-import cn.mythicland.dreamlib.config.ConfigView;
-import cn.mythicland.dreamlib.config.ConfigurableComponent;
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.config.ConfigView;
+import cn.mythicland.framework.bukkit.config.ConfigurableComponent;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigComponent;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigProperty;
+import cn.mythicland.framework.bukkit.text.LegacyText;
 
 import java.util.EnumMap;
 import java.util.Objects;
@@ -47,11 +47,21 @@ public final class CombatConfiguration implements ConfigurableComponent {
                 CombatStat.EXPERIENCE_BONUS,
                 visibleLabel(raw.experienceBonusLabel(), CombatStat.EXPERIENCE_BONUS)
         );
+        labels.put(CombatStat.MAGIC_DAMAGE, visibleLabel(raw.magicDamageLabel(), CombatStat.MAGIC_DAMAGE));
+        labels.put(CombatStat.PHYSICAL_DEFENSE, visibleLabel(raw.physicalDefenseLabel(), CombatStat.PHYSICAL_DEFENSE));
+        labels.put(CombatStat.MAGIC_DEFENSE, visibleLabel(raw.magicDefenseLabel(), CombatStat.MAGIC_DEFENSE));
+        labels.put(CombatStat.PHYSICAL_PENETRATION, visibleLabel(raw.physicalPenetrationLabel(), CombatStat.PHYSICAL_PENETRATION));
+        labels.put(CombatStat.PHYSICAL_PENETRATION_PERCENT, visibleLabel(raw.physicalPenetrationLabel(), CombatStat.PHYSICAL_PENETRATION_PERCENT));
+        labels.put(CombatStat.MAGIC_PENETRATION, visibleLabel(raw.magicPenetrationLabel(), CombatStat.MAGIC_PENETRATION));
+        labels.put(CombatStat.MAGIC_PENETRATION_PERCENT, visibleLabel(raw.magicPenetrationLabel(), CombatStat.MAGIC_PENETRATION_PERCENT));
+        labels.put(CombatStat.MOVEMENT_SPEED, visibleLabel(raw.movementSpeedLabel(), CombatStat.MOVEMENT_SPEED));
+        labels.put(CombatStat.LIFESTEAL, visibleLabel(raw.lifestealLabel(), CombatStat.LIFESTEAL));
         snapshot = new CombatSettings(
                 raw.feedbackEnabled(),
                 labels,
                 visibleLabel(raw.levelRequirementLabel(), "需要等级"),
-                new CombatMessages(raw.criticalHitMessage(), raw.healthRegenMessage())
+                new CombatMessages(raw.criticalHitMessage(), raw.healthRegenMessage()),
+                raw.defenseConstant()
         );
     }
 
@@ -67,71 +77,120 @@ public final class CombatConfiguration implements ConfigurableComponent {
     }
 
     private record RawSettings(
-            @ConfigValue(
+            @ConfigProperty(
                     path = "combat-feedback",
                     defaultValue = "false"
             )
             boolean feedbackEnabled,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "messages.critical-hit",
                     defaultValue = "&c&l暴击! &f你造成了&c{damage}&f点伤害!",
                     nonBlank = true
             )
             String criticalHitMessage,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "messages.health-regen",
                     defaultValue = "&a&l生命回复! &f你恢复了&c{amount}&f点生命值!",
                     nonBlank = true
             )
             String healthRegenMessage,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.damage",
-                    defaultValue = "伤害",
+                    defaultValue = "物理攻击",
                     nonBlank = true
             )
             String damageLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.defense",
                     defaultValue = "防御",
                     nonBlank = true
             )
             String defenseLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.health",
                     defaultValue = "生命值",
                     nonBlank = true
             )
             String healthLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.health-regen",
                     defaultValue = "生命回复",
                     nonBlank = true
             )
             String healthRegenLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.crit-chance",
                     defaultValue = "暴击几率",
                     nonBlank = true
             )
             String critChanceLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.crit-damage",
                     defaultValue = "暴击伤害",
                     nonBlank = true
             )
             String critDamageLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.experience-bonus",
                     defaultValue = "经验加成",
                     nonBlank = true
             )
             String experienceBonusLabel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "labels.level-requirement",
                     defaultValue = "需要等级",
                     nonBlank = true
             )
-            String levelRequirementLabel
+            String levelRequirementLabel,
+            @ConfigProperty(
+                    path = "labels.magic-damage",
+                    defaultValue = "法术攻击",
+                    nonBlank = true
+            )
+            String magicDamageLabel,
+            @ConfigProperty(
+                    path = "labels.physical-defense",
+                    defaultValue = "物理防御",
+                    nonBlank = true
+            )
+            String physicalDefenseLabel,
+            @ConfigProperty(
+                    path = "labels.magic-defense",
+                    defaultValue = "法术防御",
+                    nonBlank = true
+            )
+            String magicDefenseLabel,
+            @ConfigProperty(
+                    path = "labels.physical-penetration",
+                    defaultValue = "物理穿透",
+                    nonBlank = true
+            )
+            String physicalPenetrationLabel,
+            @ConfigProperty(
+                    path = "labels.magic-penetration",
+                    defaultValue = "法术穿透",
+                    nonBlank = true
+            )
+            String magicPenetrationLabel,
+            @ConfigProperty(
+                    path = "labels.movement-speed",
+                    defaultValue = "移动速度",
+                    nonBlank = true
+            )
+            String movementSpeedLabel,
+            @ConfigProperty(
+                    path = "labels.lifesteal",
+                    defaultValue = "嗜血",
+                    nonBlank = true
+            )
+            String lifestealLabel,
+            @ConfigProperty(
+                    path = "combat.defense-constant",
+                    defaultValue = "600",
+                    positive = true,
+                    finite = true
+            )
+            double defenseConstant
     ) {
     }
 }

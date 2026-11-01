@@ -1,22 +1,19 @@
 package cn.mythicland.dreamrpg.bootstrap;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.config.*;
 import cn.mythicland.dreamrpg.database.PlayerProfileRepository;
 import cn.mythicland.dreamrpg.database.PlayerProfileStore;
 import cn.mythicland.dreamrpg.display.WorldLocationService;
+import cn.mythicland.dreamrpg.member.MythicMemberRuntime;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.database.MigrationRunner;
-import cn.mythicland.dreamlib.database.MigrationSpec;
-import cn.mythicland.dreamlib.database.SqlDatabase;
-import cn.mythicland.dreamlib.library.LibraryLoadResult;
-import cn.mythicland.dreamlib.library.LibrarySpec;
-import cn.mythicland.dreamlib.location.LocationSnapper;
-import cn.mythicland.dreamlib.text.TemplateRenderer;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.plugin.java.JavaPlugin;
+import cn.mythicland.dreamworld.api.DreamWorldApi;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.location.LocationSnapper;
+import cn.mythicland.framework.bukkit.text.TemplateRenderer;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.database.MigrationSpec;
+import cn.mythicland.framework.database.SqlDatabase;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,12 +22,11 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
-import cn.mythicland.dreamworld.api.DreamWorldApi;
-
-import java.util.logging.Level;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * DreamRPG's injected infrastructure context.
@@ -44,9 +40,9 @@ public final class DreamRPGContext implements AutoCloseable {
 
     private final JavaPlugin plugin;
     private final DreamLibApi lib;
-    private final LibraryLoadResult libraries;
     private final SqlDatabase database;
     private final PlayerProfileStore repository;
+    private final MythicMemberRuntime membership;
     private final SpawnService spawnService;
     private final TemplateRenderer templates;
     private final WorldLocationService worldLocation;
@@ -77,59 +73,46 @@ public final class DreamRPGContext implements AutoCloseable {
         this.scoreboardConfiguration = Objects.requireNonNull(scoreboardConfiguration, "scoreboardConfiguration");
 
         SqlDatabase openedDatabase = null;
-        LibraryLoadResult loadedLibraries = null;
         try {
-            saveResourceIfMissing("careers.yml");
+            lib.content().resource(plugin, "careers.yml", "careers.yml");
             DreamRPGSettings loadedSettings = configuration.snapshot();
             ScoreboardSettings loadedScoreboard = scoreboardConfiguration.snapshot();
             lib.containerAnimationService().verifyCompatibility();
             validateIntegrations(loadedSettings, loadedScoreboard);
             CareerCatalog loadedCatalog = CareerCatalog.load(plugin);
-            RuntimeLibraryManifest libraryManifest = RuntimeLibraryManifest.embedded();
-            List<LibrarySpec> librariesToLoad = librariesFor(
-                    loadedSettings,
-                    libraryManifest
-            );
-            loadedLibraries = lib.libraryService().load(
+            openedDatabase = lib.sharedDatabase().database();
+            lib.sharedDatabase().migrate(
                     plugin,
-                    librariesToLoad,
-                    loadedSettings.libraryRepository()
-            );
-            openedDatabase = openDatabase(loadedSettings, libraryManifest, loadedLibraries);
-            new MigrationRunner().migrate(
-                    openedDatabase,
-                    plugin,
+                    "dreamrpg_schema_history",
                     List.of(
-                            new MigrationSpec(1, "db/sqlite/V1__create_player_profiles.sql"),
-                            new MigrationSpec(2, "db/sqlite/V2__create_player_coins.sql"),
-                            new MigrationSpec(3, "db/sqlite/V3__create_player_storage.sql"),
-                            new MigrationSpec(4, "db/sqlite/V4__create_player_experience.sql"),
-                            new MigrationSpec(5, "db/sqlite/V5__create_first_join_rewards.sql"),
-                            new MigrationSpec(6, "db/sqlite/V6__create_player_vitals.sql")
+                            new MigrationSpec(1, "V1__create_player_profiles.sql"),
+                            new MigrationSpec(2, "V2__create_player_coins.sql"),
+                            new MigrationSpec(3, "V3__create_player_storage.sql"),
+                            new MigrationSpec(4, "V4__create_player_experience.sql"),
+                            new MigrationSpec(5, "V5__create_first_join_rewards.sql"),
+                            new MigrationSpec(6, "V6__create_player_vitals.sql"),
+                            new MigrationSpec(7, "V7__create_player_settings.sql"),
+                            new MigrationSpec(8, "V8__add_auto_pickup.sql"),
+                            new MigrationSpec(9, "V9__create_memberships.sql"),
+                            new MigrationSpec(10, "V10__create_member_names.sql"),
+                            new MigrationSpec(11, "V11__index_member_names.sql")
                     )
             );
-            this.libraries = loadedLibraries;
+            MythicMemberRuntime openedMembership = new MythicMemberRuntime(
+                    plugin,
+                    lib.sharedDatabase()
+            );
             this.database = openedDatabase;
             this.repository = new PlayerProfileRepository(openedDatabase);
+            this.membership = openedMembership;
             this.spawnService = new SpawnService(loadedSettings.spawn());
             this.templates = new TemplateRenderer(plugin, lib.placeholderService());
             this.settings = loadedSettings;
             this.scoreboardSettings = loadedScoreboard;
             this.careerCatalog = loadedCatalog;
         } catch (IOException | SQLException | RuntimeException exception) {
-            closeFailedDatabase(openedDatabase, exception);
-            closeFailedLibraries(loadedLibraries, exception);
             throw new IllegalStateException("Failed to initialize DreamRPG infrastructure", exception);
         }
-    }
-
-    private static List<LibrarySpec> librariesFor(
-            DreamRPGSettings settings,
-            RuntimeLibraryManifest manifest
-    ) {
-        return settings.database().mode() == DreamRPGSettings.DatabaseMode.SQLITE
-                ? List.of(manifest.sqlite())
-                : List.of(manifest.mysql());
     }
 
     private static void validateRegularFile(Path target) {
@@ -138,32 +121,11 @@ public final class DreamRPGContext implements AutoCloseable {
         }
     }
 
-    private static void closeFailedDatabase(SqlDatabase openedDatabase, Throwable failure) {
-        if (openedDatabase == null) return;
-        try {
-            openedDatabase.close();
-        } catch (SQLException closeFailure) {
-            failure.addSuppressed(closeFailure);
-        }
-    }
-
-    private static void closeFailedLibraries(LibraryLoadResult loadedLibraries, Throwable failure) {
-        if (loadedLibraries == null) return;
-        try {
-            loadedLibraries.close();
-        } catch (IOException closeFailure) {
-            failure.addSuppressed(closeFailure);
-        }
-    }
-
     /**
      * Reloads mutable configuration and career definitions without touching JDBC or runtime JARs.
      */
     public void reload() {
         DreamRPGSettings refreshedSettings = configuration.snapshot();
-        if (refreshedSettings.database().mode() != settings.database().mode()) {
-            throw new IllegalStateException("Changing database.mode requires a full restart");
-        }
         ScoreboardSettings refreshedScoreboard = scoreboardConfiguration.snapshot();
         validateIntegrations(refreshedSettings, refreshedScoreboard);
         CareerCatalog refreshedCatalog = CareerCatalog.load(plugin);
@@ -171,6 +133,10 @@ public final class DreamRPGContext implements AutoCloseable {
         settings = refreshedSettings;
         scoreboardSettings = refreshedScoreboard;
         careerCatalog = refreshedCatalog;
+    }
+
+    void replaceCareerCatalog(CareerCatalog catalog) {
+        careerCatalog = Objects.requireNonNull(catalog, "catalog");
     }
 
     /**
@@ -228,6 +194,15 @@ public final class DreamRPGContext implements AutoCloseable {
     }
 
     /**
+     * Returns the initialized MythicMemberLib runtime owned by DreamRPG.
+     *
+     * @return membership runtime
+     */
+    public MythicMemberRuntime membership() {
+        return membership;
+    }
+
+    /**
      * Returns the main spawn service.
      *
      * @return main spawn service
@@ -244,8 +219,8 @@ public final class DreamRPGContext implements AutoCloseable {
      * @throws IllegalStateException if called off the primary thread or if the location is invalid
      */
     public CompletableFuture<Location> setMainSpawn(Location requestedLocation) {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Main spawn must be set on the primary thread");
-        Location snapped = LocationSnapper.snapBlockAndView(requestedLocation);
+        MainThread.require("Main spawn must be set on the primary thread");
+        Location snapped = LocationSnapper.snapBlockAndHorizontalView(requestedLocation);
         var worlds = Objects.requireNonNull(Bukkit.getServicesManager().load(DreamWorldApi.class),
                 "DreamWorld service is unavailable");
         String logicalName = worlds.findLogicalName(snapped.getWorld()).orElseThrow();
@@ -265,21 +240,9 @@ public final class DreamRPGContext implements AutoCloseable {
         return templates;
     }
 
-    /**
-     * Closes the runtime JDBC registration.
-     */
     @Override
     public void close() {
-        try {
-            database.close();
-        } catch (SQLException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to close DreamRPG database", exception);
-        }
-        try {
-            libraries.close();
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to close DreamRPG dependency classloader", exception);
-        }
+        membership.close();
     }
 
     private void validateIntegrations(
@@ -304,41 +267,4 @@ public final class DreamRPGContext implements AutoCloseable {
         }
     }
 
-    private SqlDatabase openDatabase(
-            DreamRPGSettings settings,
-            RuntimeLibraryManifest manifest,
-            LibraryLoadResult libraries
-    ) {
-        if (settings.database().mode() == DreamRPGSettings.DatabaseMode.SQLITE) {
-            return lib.databaseService().openSqlite(
-                    plugin,
-                    settings.databasePath(plugin.getDataFolder().toPath()),
-                    manifest.driverClassName(),
-                    libraries.classLoader()
-            );
-        }
-        Properties properties = new Properties();
-        properties.setProperty("user", settings.database().mysql().username());
-        properties.setProperty("password", settings.database().mysql().password());
-        return lib.databaseService().openJdbc(
-                plugin,
-                settings.database().mysql().jdbcUrl(),
-                properties,
-                manifest.mysqlDriverClassName(),
-                libraries.classLoader()
-        );
-    }
-
-    private void saveResourceIfMissing(String resourcePath) {
-        Path target = plugin.getDataFolder().toPath().resolve(resourcePath).normalize();
-        if (Files.isSymbolicLink(target)) {
-            throw new IllegalStateException("DreamRPG resource cannot be a symbolic link: " + target);
-        }
-        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
-            validateRegularFile(target);
-            return;
-        }
-        plugin.saveResource(resourcePath, false);
-        validateRegularFile(target);
-    }
 }

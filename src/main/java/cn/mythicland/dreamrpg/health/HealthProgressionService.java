@@ -6,17 +6,13 @@ import cn.mythicland.dreamrpg.config.ExperienceConfiguration;
 import cn.mythicland.dreamrpg.config.ExperienceSettings;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
 import cn.mythicland.dreamrpg.event.RpgLevelUpEvent;
+import cn.mythicland.dreamrpg.event.RpgLevelChangedEvent;
 import cn.mythicland.dreamrpg.experience.ExperienceService;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerRespawnEvent;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -24,6 +20,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerRespawnEvent;
 
 /**
  * Synchronizes configurable maximum health from DreamRPG RPG level changes.
@@ -59,7 +62,7 @@ public final class HealthProgressionService implements Listener, HealthApi {
     }
 
     private static void ensurePrimaryThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("DreamRPG health requires the main thread");
+        MainThread.require("DreamRPG health requires the main thread");
     }
 
     /**
@@ -149,6 +152,12 @@ public final class HealthProgressionService implements Listener, HealthApi {
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRpgLevelUp(RpgLevelUpEvent event) {
+        Player player = Bukkit.getPlayer(event.uniqueId());
+        if (player != null && player.isOnline()) apply(player);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRpgLevelChanged(RpgLevelChangedEvent event) {
         Player player = Bukkit.getPlayer(event.uniqueId());
         if (player != null && player.isOnline()) apply(player);
     }

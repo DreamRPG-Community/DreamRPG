@@ -1,12 +1,19 @@
 package cn.mythicland.dreamrpg.command;
 
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.command.CommandContext;
-import cn.mythicland.dreamlib.loading.PlayerLoadingGate;
 import cn.mythicland.dreamworld.api.DreamWorldApi;
 import cn.mythicland.dreamworld.api.WorldSpawn;
 import cn.mythicland.dreamworldregion.api.DreamWorldRegionApi;
 import cn.mythicland.dreamworldregion.api.LandmarkDefinition;
+import cn.mythicland.framework.bukkit.command.CommandContext;
+import cn.mythicland.framework.bukkit.player.PlayerLoadingGate;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -15,12 +22,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,6 +51,8 @@ class WaypointCommandTest {
         when(plugin.getDataFolder()).thenReturn(directory.toFile());
         when(plugin.isEnabled()).thenReturn(true);
         DreamLibApi lib = mock(DreamLibApi.class);
+        var content = new cn.mythicland.framework.bukkit.content.ContentWorkspace(directory);
+        when(lib.content()).thenReturn(content);
         when(lib.playerLoadingGate()).thenReturn(mock(PlayerLoadingGate.class));
         when(lib.runOnMain(any())).thenAnswer(call -> {
             ((Runnable) call.getArgument(0)).run();
@@ -74,7 +77,7 @@ class WaypointCommandTest {
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getServicesManager).thenReturn(services);
             WaypointCommand command = new WaypointCommand(plugin, lib);
-            command.enable();
+            command.load();
             command.teleport(context(player, "g"));
             verify(landmarks).teleport(player, "old_gate");
             verify(landmarks).findLandmark("old_gate");
@@ -92,6 +95,8 @@ class WaypointCommandTest {
         JavaPlugin plugin = mock(JavaPlugin.class);
         when(plugin.getDataFolder()).thenReturn(directory.toFile());
         DreamLibApi lib = mock(DreamLibApi.class);
+        var content = new cn.mythicland.framework.bukkit.content.ContentWorkspace(directory);
+        when(lib.content()).thenReturn(content);
         when(lib.playerLoadingGate()).thenReturn(mock(PlayerLoadingGate.class));
         DreamWorldApi worlds = mock(DreamWorldApi.class);
         DreamWorldRegionApi landmarks = mock(DreamWorldRegionApi.class);
@@ -102,7 +107,7 @@ class WaypointCommandTest {
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getServicesManager).thenReturn(services);
             WaypointCommand command = new WaypointCommand(plugin, lib);
-            command.enable();
+            command.load();
             Files.writeString(file, "waypoints:\n  one: {name: One, world: main_city, landmark: gate}\n");
             assertThrows(IllegalStateException.class, command::reload);
             command.teleport(context(player, "one"));

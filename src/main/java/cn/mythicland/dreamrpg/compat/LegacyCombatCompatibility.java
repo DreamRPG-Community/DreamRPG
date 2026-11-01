@@ -1,9 +1,12 @@
 package cn.mythicland.dreamrpg.compat;
 
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+
+import java.util.Objects;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,8 +32,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffectType;
-
-import java.util.Objects;
 
 /**
  * Restores the server-side parts of the 1.8.9 combat and inventory interaction rules.

@@ -1,29 +1,23 @@
 package cn.mythicland.dreamrpgitems.service;
 
+import cn.mythicland.framework.bukkit.content.ContentWorkspace;
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
-import cn.mythicland.dreamlib.item.ItemMarker;
-import cn.mythicland.dreamlib.item.ItemMarkerCodec;
-import cn.mythicland.dreamlib.item.ItemStackCodec;
-import cn.mythicland.dreamlib.menu.PageWindow;
-import cn.mythicland.dreamlib.path.ManagedPathResolver;
-import cn.mythicland.dreamlib.storage.AtomicYamlTransaction;
-import cn.mythicland.dreamlib.storage.YamlTree;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpgitems.api.*;
 import cn.mythicland.dreamrpgitems.story.StoryConfiguration;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.bukkit.item.ItemMarker;
+import cn.mythicland.framework.bukkit.item.ItemMarkerCodec;
+import cn.mythicland.framework.bukkit.item.ItemStackCodec;
+import cn.mythicland.framework.bukkit.storage.AtomicYamlTransaction;
+import cn.mythicland.framework.bukkit.storage.YamlTree;
+import cn.mythicland.framework.pagination.PageWindow;
+import cn.mythicland.framework.path.ManagedPathResolver;
 import io.lumine.xikage.mythicmobs.MythicMobs;
 import io.lumine.xikage.mythicmobs.items.ItemManager;
 import io.lumine.xikage.mythicmobs.items.MythicItem;
 import io.lumine.xikage.mythicmobs.utils.config.ConfigurationSection;
-import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,8 +33,17 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 /**
- * MM item domain service. MythicMobs ItemManager and the original Items YAML files remain the
+ * MM item domain service. MythicMobs ItemManager and editable content sources remain the
  * source of truth for all RPG items.
  */
 @ServiceComponent(DreamRPGItemApi.class)
@@ -49,8 +52,7 @@ public final class MythicItemService implements DreamRPGItemApi {
     private static final String IDENTITY_NAMESPACE = "DreamRPG";
     private static final int IDENTITY_SCHEMA = 1;
 
-    private static final Pattern ITEM_NAME = Pattern.compile("[A-Za-z0-9_\\-\\u4e00-\\u9fff]{1,64}");
-    private static final List<String> REFERENCE_DIRECTORIES = List.of("Mobs", "DropTables", "Skills");
+    private static final Pattern ITEM_NAME = Pattern.compile("[a-z][a-z0-9_]{0,63}");
     private static final int MAX_IMPORT_FILES = 50;
     private static final int MAX_IMPORT_FILE_BYTES = 4 * 1024 * 1024;
     private static final Set<String> ITEM_SECTION_KEYS = Set.of(
@@ -78,9 +80,9 @@ public final class MythicItemService implements DreamRPGItemApi {
         this.lib = Objects.requireNonNull(lib, "lib");
         this.mythicMobs = requireMythicMobs(plugin);
         this.itemManager = mythicMobs.getItemManager();
-        Path itemsRoot = mythicMobs.getDataFolder().toPath().resolve("Items");
+        Path itemsRoot = lib.content().root();
         this.itemsPath = lib.pathService().managed(itemsRoot);
-        this.managedFile = itemsPath.resolve("DreamRPG/items.yml");
+        this.managedFile = lib.content().destination("common", "items/imported.yml");
         this.identityCodec = lib.itemMarkerCodec();
     }
 
@@ -91,6 +93,11 @@ public final class MythicItemService implements DreamRPGItemApi {
                 .getPlugin("MythicMobs");
         if (!(dependency instanceof MythicMobs mythicMobs)) {
             throw new IllegalStateException("MythicMobs is not enabled");
+        }
+        try (var marker = mythicMobs.getResource("dreamrpg-content.properties")) {
+            if (marker == null) throw new IllegalStateException("MythicMobs requires the direct-content adapter");
+        } catch (IOException failure) {
+            throw new java.io.UncheckedIOException("Cannot verify MythicMobs content adapter", failure);
         }
         return mythicMobs;
     }
@@ -113,7 +120,7 @@ public final class MythicItemService implements DreamRPGItemApi {
         try {
             itemsPath.ensureRootDirectory();
             ensureManagedFile();
-            itemManager.loadItems();
+            reloadItems();
             refreshCatalog();
             itemFingerprint = currentFingerprint();
             pendingFingerprint = itemFingerprint;
@@ -284,7 +291,7 @@ public final class MythicItemService implements DreamRPGItemApi {
                 "",
                 request.internalName(),
                 request.configuration(),
-                managedFile,
+                itemDestination(request.contentPackage()),
                 MythicItemMutationStatus.CREATED,
                 false,
                 false
@@ -430,7 +437,7 @@ public final class MythicItemService implements DreamRPGItemApi {
         requirePrimaryThread();
         try {
             Map<String, String> previous = revisionSnapshot();
-            itemManager.loadItems();
+            reloadItems();
             refreshCatalog();
             itemFingerprint = currentFingerprint();
             pendingFingerprint = itemFingerprint;
@@ -445,12 +452,13 @@ public final class MythicItemService implements DreamRPGItemApi {
     public MythicItemImportResult previewImport(MythicItemImportRequest request) {
         requirePrimaryThread();
         Objects.requireNonNull(request, "request");
+        lib.content().destination(request.contentPackage(), "items/imported.yml");
         ImportAnalysis analysis = analyzeImport(request);
         return importResult(
                 analysis,
                 analysis.status(),
                 analysis.status() == MythicItemImportStatus.PREVIEW
-                        ? "已识别 MM 物品，确认后将写入 MythicMobs 物品目录"
+                        ? "已识别 MM 物品，确认后将写入 content 物品目录"
                         : "导入预览存在问题，未写入任何文件"
         );
     }
@@ -459,22 +467,24 @@ public final class MythicItemService implements DreamRPGItemApi {
     public MythicItemImportResult importItems(MythicItemImportRequest request) {
         requirePrimaryThread();
         Objects.requireNonNull(request, "request");
+        lib.content().destination(request.contentPackage(), "items/imported.yml");
         ImportAnalysis analysis = analyzeImport(request);
         if (analysis.status() != MythicItemImportStatus.PREVIEW) {
             return importResult(analysis, analysis.status(), "导入未执行，未写入任何文件");
         }
 
+        Path target = itemDestination(request.contentPackage());
         try (AtomicYamlTransaction transaction = lib.storageService().transaction()) {
-            YamlConfiguration configuration = loadYaml(managedFile);
+            YamlConfiguration configuration = loadYaml(target);
             Map<String, String> previous = revisionSnapshot();
             for (ParsedImportItem item : analysis.items()) {
                 setItem(configuration, item.internalName(), item.configuration());
             }
-            transaction.write(managedFile, configuration);
+            transaction.write(target, configuration);
 
-            itemManager.loadItems();
+            reloadItems();
             refreshCatalog();
-            verifyImportedItems(analysis.items());
+            verifyImportedItems(analysis.items(), target);
             transaction.commit();
             itemFingerprint = currentFingerprint();
             pendingFingerprint = itemFingerprint;
@@ -486,7 +496,7 @@ public final class MythicItemService implements DreamRPGItemApi {
             );
         } catch (IOException | RuntimeException exception) {
             try {
-                itemManager.loadItems();
+                reloadItems();
                 refreshCatalog();
             } catch (RuntimeException rollbackException) {
                 plugin.getLogger().severe("DreamRPG items import rollback refresh failed: "
@@ -498,16 +508,6 @@ public final class MythicItemService implements DreamRPGItemApi {
                     "MM 批量导入失败: " + safeMessage(exception)
             );
         }
-    }
-
-    @Override
-    public MythicItemEditorCatalog editorCatalog() {
-        requirePrimaryThread();
-        return new MythicItemEditorCatalog(
-                lib.materialCatalog().entries(),
-                lib.enchantmentCatalog().entries(),
-                Arrays.stream(ItemFlag.values()).map(Enum::name).toList()
-        );
     }
 
     /**
@@ -523,7 +523,7 @@ public final class MythicItemService implements DreamRPGItemApi {
     }
 
     /**
-     * Detects manual changes below MythicMobs/Items and refreshes the registry on the main thread.
+     * Detects manual changes below the editable items directory and refreshes the registry on the main thread.
      */
     public void refreshIfFilesChanged() {
         requirePrimaryThread();
@@ -534,7 +534,7 @@ public final class MythicItemService implements DreamRPGItemApi {
             return;
         }
         Map<String, String> previous = revisionSnapshot();
-        itemManager.loadItems();
+        reloadItems();
         refreshCatalog();
         itemFingerprint = currentFingerprint;
         pendingFingerprint = itemFingerprint;
@@ -573,7 +573,7 @@ public final class MythicItemService implements DreamRPGItemApi {
                 transaction.writeText(entry.getKey(), entry.getValue());
             }
 
-            itemManager.loadItems();
+            reloadItems();
             refreshCatalog();
             verifyMutation(oldName, newName, mutationStatus, sourceFile);
             transaction.commit();
@@ -598,7 +598,7 @@ public final class MythicItemService implements DreamRPGItemApi {
             );
         } catch (IOException | RuntimeException exception) {
             try {
-                itemManager.loadItems();
+                reloadItems();
                 refreshCatalog();
             } catch (RuntimeException rollbackException) {
                 plugin.getLogger().severe("DreamRPG items rollback refresh failed: " + rollbackException.getMessage());
@@ -757,8 +757,8 @@ public final class MythicItemService implements DreamRPGItemApi {
                 .anyMatch(ITEM_SECTION_KEYS::contains);
     }
 
-    private void verifyImportedItems(List<ParsedImportItem> items) throws IOException {
-        Path expectedFile = managedFile.toAbsolutePath().normalize();
+    private void verifyImportedItems(List<ParsedImportItem> items, Path target) throws IOException {
+        Path expectedFile = target.toAbsolutePath().normalize();
         for (ParsedImportItem item : items) {
             String actualName = existingItemName(item.internalName());
             CatalogEntry entry = actualName == null ? null : catalog.get(actualName);
@@ -827,18 +827,9 @@ public final class MythicItemService implements DreamRPGItemApi {
 
     private List<ReferenceHit> referenceHits(String itemName) {
         List<ReferenceHit> hits = new ArrayList<>();
-        Path dataFolder = mythicMobs.getDataFolder().toPath();
-        for (String directory : REFERENCE_DIRECTORIES) {
-            Path root = dataFolder.resolve(directory);
-            if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) continue;
-            try (Stream<Path> paths = Files.walk(root)) {
-                paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
-                        .filter(this::isYaml)
-                        .forEach(path -> collectReferenceHits(path, root, itemName, hits));
-            } catch (IOException exception) {
-                throw new MythicItemException("REFERENCE_CHECK_FAILED", "无法检查 MM 物品引用", exception);
-            }
-        }
+        Path root = lib.content().root();
+        for (Path path : lib.content().definitions(List.of("mobs", "skills", "droptables")).values().stream().flatMap(List::stream).toList())
+            collectReferenceHits(path, root, itemName, hits);
         return List.copyOf(hits);
     }
 
@@ -863,6 +854,14 @@ public final class MythicItemService implements DreamRPGItemApi {
         return MythicItemReferenceScanner.replaceReferences(content, oldName, newName);
     }
 
+    private Path itemDestination(String contentPackage) {
+        Path target = lib.content().destination(contentPackage, "items/imported.yml");
+        try {
+            if (!Files.exists(target, LinkOption.NOFOLLOW_LINKS)) lib.storageService().writeUtf8(target, "# Editor-created items.\n");
+        } catch (IOException exception) { throw new java.io.UncheckedIOException(exception); }
+        return target;
+    }
+
     private void ensureManagedFile() throws IOException {
         if (Files.exists(managedFile, LinkOption.NOFOLLOW_LINKS)) return;
         lib.storageService().writeUtf8(managedFile, "# MythicMobs items managed by DreamRPG items.\n");
@@ -881,7 +880,7 @@ public final class MythicItemService implements DreamRPGItemApi {
         }
         Path normalized = sourceFile.toAbsolutePath().normalize();
         if (!normalized.startsWith(itemsPath.root())) {
-            throw new MythicItemException("SOURCE_NOT_WRITABLE", "MM 物品来源文件不在 Items 目录内");
+            throw new MythicItemException("SOURCE_NOT_WRITABLE", "物品来源文件不在 content 目录内");
         }
         if (!isYaml(normalized)) {
             throw new MythicItemException("SOURCE_NOT_WRITABLE", "只允许修改 YAML 物品文件");
@@ -928,8 +927,13 @@ public final class MythicItemService implements DreamRPGItemApi {
 
     private void validateItemName(String internalName) {
         if (internalName == null || !ITEM_NAME.matcher(internalName).matches()) {
-            throw new MythicItemException("INVALID_ITEM_ID", "MM ID 只能包含字母、数字、下划线、连字符或中文");
+            throw new MythicItemException("INVALID_ITEM_ID", "MM ID 必须使用小写英文字母开头, 后接小写字母、数字或下划线");
         }
+    }
+
+    private void reloadItems() {
+        lib.content().definitions(List.of("items"));
+        itemManager.loadItems();
     }
 
     private void refreshCatalog() {
@@ -992,7 +996,7 @@ public final class MythicItemService implements DreamRPGItemApi {
         MythicItemSummary summary = new MythicItemSummary(
                 item.getInternalName(),
                 relativeFile(sourceFile),
-                sourceFile.startsWith(managedFile.getParent()),
+                sourceFile.startsWith(itemsPath.root()),
                 MythicItemStatus.LOADED,
                 displayName,
                 materialName,
@@ -1006,7 +1010,7 @@ public final class MythicItemService implements DreamRPGItemApi {
     }
 
     private Map<String, Object> copyItemSection(MythicItem item, Path sourceFile,
-            Map<Path, YamlConfiguration> sources) {
+                                                Map<Path, YamlConfiguration> sources) {
         if (Files.isRegularFile(sourceFile, LinkOption.NOFOLLOW_LINKS)) {
             YamlConfiguration configuration = sources.computeIfAbsent(sourceFile,
                     path -> YamlConfiguration.loadConfiguration(path.toFile()));
@@ -1129,7 +1133,8 @@ public final class MythicItemService implements DreamRPGItemApi {
     private Path sourcePath(MythicItem item) {
         File file = item.getConfig() == null ? null : item.getConfig().getFile();
         if (file == null) return Path.of("").toAbsolutePath().normalize();
-        return file.toPath().toAbsolutePath().normalize();
+        Path runtime = file.toPath().toAbsolutePath().normalize();
+        return runtime;
     }
 
     private String relativeFile(Path source) {
@@ -1212,12 +1217,6 @@ public final class MythicItemService implements DreamRPGItemApi {
         );
     }
 
-    private void requirePrimaryThread() {
-        if (!Bukkit.isPrimaryThread()) {
-            throw new IllegalStateException("DreamRPG items API must run on Bukkit's primary thread");
-        }
-    }
-
     private record CatalogEntry(
             MythicItemSummary summary,
             Map<String, Object> configuration,
@@ -1276,4 +1275,9 @@ public final class MythicItemService implements DreamRPGItemApi {
             errors = List.copyOf(errors);
         }
     }
+
+    private void requirePrimaryThread() {
+        MainThread.require("DreamRPG items API must run on Bukkit's primary thread");
+    }
+
 }

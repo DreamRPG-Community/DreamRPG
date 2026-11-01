@@ -1,18 +1,23 @@
 package cn.mythicland.dreamrpgitems.sync;
 
+import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.api.ExperienceApi;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshMode;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshResult;
 import cn.mythicland.dreamrpgitems.api.MythicItemsChangedEvent;
 import cn.mythicland.dreamrpgitems.api.MythicItemsSyncRequestedEvent;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
+
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,17 +25,13 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
  * Synchronizes marked MM items in loaded player inventories and ender chests.
  */
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
-public final class PlayerItemSynchronizer implements DreamLibPluginLifecycle, Listener {
+public final class PlayerItemSynchronizer implements ManagedLifecycle, Listener {
 
     private final DreamRPGPlugin plugin;
     private final MythicItemService items;
@@ -51,7 +52,7 @@ public final class PlayerItemSynchronizer implements DreamLibPluginLifecycle, Li
     }
 
     @Override
-    public void enable() {
+    public void load() {
         // PlayerDataReadyEvent remains the authoritative first-load hook. The delayed scan covers
         // a reload of DreamRPG item service while DreamRPG already has loaded players.
         tasks.runLater(1L, this::synchronizeLoadedPlayers);
@@ -65,7 +66,7 @@ public final class PlayerItemSynchronizer implements DreamLibPluginLifecycle, Li
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         synchronizationDisabled = false;
         lastSynchronizedGeneration = Long.MIN_VALUE;
     }

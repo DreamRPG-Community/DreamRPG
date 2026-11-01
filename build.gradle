@@ -39,14 +39,26 @@ tasks.withType(Jar).configureEach {
 
 def paperApiVersion = "1.12.2-R0.1-20190714.184133-413"
 
+configurations {
+    firstPartyEmbedded {
+        transitive = false
+    }
+}
+
 dependencies {
+    firstPartyEmbedded("cn.mythicland:mythic-memberlib:1.0.0")
     compileOnly("com.destroystokyo.paper:paper-api:${paperApiVersion}")
     compileOnly("self-written:DreamLib:${project.version}")
     compileOnly("self-written:DreamWorld:${project.version}")
     compileOnly("self-written:DreamNPC:${project.version}")
     compileOnly("self-written:DreamChest:${project.version}")
     compileOnly("io.lumine.xikage:MythicMobs:4.12.0")
+    compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
+    compileOnly("cn.mythicland:mythic-memberlib:1.0.0")
+    compileOnly("net.luckperms:api:5.4")
+    testImplementation("cn.mythicland:mythic-memberlib:1.0.0")
     testImplementation("io.lumine.xikage:MythicMobs:4.12.0")
+    testImplementation("self-written:DreamNPC:${project.version}")
     testImplementation("self-written:DreamChest:${project.version}")
     testImplementation("self-written:DreamWorld:${project.version}")
     testImplementation("org.yaml:snakeyaml:1.19")
@@ -59,4 +71,12 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
     testRuntimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
+}
+
+tasks.named("jar") {
+    dependsOn(configurations.firstPartyEmbedded)
+    from {
+        configurations.firstPartyEmbedded.collect { zipTree(it) }
+    }
+    exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 }

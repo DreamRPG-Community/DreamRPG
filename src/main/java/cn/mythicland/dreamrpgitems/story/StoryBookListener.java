@@ -1,24 +1,25 @@
 package cn.mythicland.dreamrpgitems.story;
 
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.text.LegacyText;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
+
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.bukkit.Material;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Event;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
-
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Opens configured stories for identity-marked MM items.

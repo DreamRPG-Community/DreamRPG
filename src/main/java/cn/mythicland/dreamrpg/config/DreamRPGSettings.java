@@ -1,23 +1,19 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.dreamlib.config.ConfigSupport;
-import cn.mythicland.dreamlib.config.ConfigValue;
-import cn.mythicland.dreamlib.config.ConfigView;
-import cn.mythicland.dreamlib.library.LibraryService;
-import cn.mythicland.dreamlib.text.TemplateRenderer;
-import org.bukkit.configuration.file.FileConfiguration;
+import cn.mythicland.framework.bukkit.config.ConfigSupport;
+import cn.mythicland.framework.bukkit.config.ConfigView;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigProperty;
+import cn.mythicland.framework.bukkit.text.TemplateRenderer;
 
-import java.net.URI;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+
+import org.bukkit.configuration.file.FileConfiguration;
 
 /**
  * Immutable DreamRPG settings loaded from config.yml.
  */
 public record DreamRPGSettings(
-        URI libraryRepository,
-        DatabaseSettings database,
         SpawnSettings spawn,
         ChatSettings chat,
         DisplaySettings display
@@ -28,8 +24,6 @@ public record DreamRPGSettings(
      */
     @SuppressWarnings("DataFlowIssue")
     public DreamRPGSettings {
-        libraryRepository = Objects.requireNonNull(libraryRepository, "libraryRepository");
-        database = Objects.requireNonNull(database, "database");
         spawn = Objects.requireNonNull(spawn, "spawn");
         chat = Objects.requireNonNull(chat, "chat");
         display = Objects.requireNonNull(display, "display");
@@ -43,9 +37,6 @@ public record DreamRPGSettings(
      */
     public static DreamRPGSettings load(FileConfiguration configuration) {
         Objects.requireNonNull(configuration, "configuration");
-        if (!configuration.contains("database.mode")) {
-            throw new IllegalStateException("Configuration requires a non-empty string: database.mode");
-        }
         return from(ConfigSupport.bind(configuration, RawSettings.class));
     }
 
@@ -54,20 +45,6 @@ public record DreamRPGSettings(
     }
 
     private static DreamRPGSettings from(RawSettings raw) {
-        URI libraryRepository = LibraryService.DEFAULT_REPOSITORY;
-        DatabaseSettings database = new DatabaseSettings(
-                raw.databaseMode(),
-                new SqliteSettings(raw.sqliteFile()),
-                new MySqlSettings(
-                        raw.mysqlHost(),
-                        raw.mysqlPort(),
-                        raw.mysqlDatabase(),
-                        raw.mysqlUsername(),
-                        raw.mysqlPassword(),
-                        raw.mysqlUseSsl(),
-                        raw.mysqlServerTimezone()
-                )
-        );
         SpawnSettings spawn = new SpawnSettings(
                 raw.spawnWorld(),
                 raw.teleportOnJoin(),
@@ -78,7 +55,7 @@ public record DreamRPGSettings(
                 new TabSettings(raw.tabHeader(), raw.tabFooter(), raw.playerNameFormat()),
                 raw.nameTagFormat()
         );
-        return new DreamRPGSettings(libraryRepository, database, spawn, chat, display);
+        return new DreamRPGSettings(spawn, chat, display);
     }
 
     private static String requireTemplate(String value, String path) {
@@ -96,175 +73,23 @@ public record DreamRPGSettings(
         }
     }
 
-    private static String requireFileName(String value, String fieldName) {
-        String fileName = Objects.requireNonNull(value, fieldName).trim();
-        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {
-            throw new IllegalArgumentException(fieldName + " must be a single file name");
-        }
-        return fileName;
-    }
-
     /**
      * Returns whether chat or player display configuration contains a PlaceholderAPI token.
      *
      * @return true when a configured chat, TAB, or name-tag template uses PlaceholderAPI
      */
     public boolean containsPlaceholderApiToken() {
-        return TemplateRenderer.containsPlaceholderApiToken(chat.format())
+        return TemplateRenderer.containsPlaceholderApiToken(
+                        chat.format().replace("%luckperms_prefix%", "")
+                )
                 || display.tab().header().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
                 || display.tab().footer().stream().anyMatch(TemplateRenderer::containsPlaceholderApiToken)
-                || TemplateRenderer.containsPlaceholderApiToken(display.tab().playerNameFormat())
-                || TemplateRenderer.containsPlaceholderApiToken(display.nameTagFormat());
-    }
-
-    /**
-     * Returns the SQLite database path below a plugin data directory.
-     *
-     * @param pluginDataDirectory plugin data directory
-     * @return normalized database path
-     */
-    public Path databasePath(Path pluginDataDirectory) {
-        return database.databasePath(pluginDataDirectory);
-    }
-
-    /**
-     * Database provider selected by database.mode.
-     */
-    public enum DatabaseMode {
-        SQLITE("sqlite"),
-        MYSQL("mysql");
-
-        private final String configValue;
-
-        DatabaseMode(String configValue) {
-            this.configValue = configValue;
-        }
-
-        /**
-         * Returns the configuration value.
-         *
-         * @return lower-case value
-         */
-        public String configValue() {
-            return configValue;
-        }
-
-    }
-
-    /**
-     * Database storage settings.
-     */
-    public record DatabaseSettings(
-            DatabaseMode mode,
-            SqliteSettings sqlite,
-            MySqlSettings mysql
-    ) {
-
-        /**
-         * Validates database settings.
-         */
-        @SuppressWarnings("DataFlowIssue")
-        public DatabaseSettings {
-            mode = Objects.requireNonNull(mode, "mode");
-            sqlite = Objects.requireNonNull(sqlite, "sqlite");
-            mysql = Objects.requireNonNull(mysql, "mysql");
-        }
-
-        /**
-         * Returns the SQLite path below a plugin directory.
-         *
-         * @param pluginDataDirectory plugin data directory
-         * @return normalized SQLite path
-         */
-        public Path databasePath(Path pluginDataDirectory) {
-            Path root = Objects.requireNonNull(pluginDataDirectory, "pluginDataDirectory")
-                    .toAbsolutePath()
-                    .normalize();
-            Path path = root.resolve(sqlite.fileName()).normalize();
-            if (!path.startsWith(root) || path.equals(root)) {
-                throw new IllegalStateException("Database path must stay below the plugin data directory");
-            }
-            return path;
-        }
-    }
-
-    /**
-     * SQLite file settings.
-     */
-    public record SqliteSettings(String fileName) {
-
-        /**
-         * Validates the SQLite file name.
-         */
-        public SqliteSettings {
-            fileName = requireFileName(fileName, "database.sqlite.file");
-        }
-    }
-
-    /**
-     * MySQL 5.7-compatible connection settings.
-     */
-    public record MySqlSettings(
-            String host,
-            int port,
-            String database,
-            String username,
-            String password,
-            boolean useSsl,
-            String serverTimezone
-    ) {
-
-        /**
-         * Validates MySQL settings.
-         */
-        public MySqlSettings {
-            host = requireText(host, "database.mysql.host");
-            if (containsPathOrUrlDelimiter(host)) {
-                throw new IllegalArgumentException("database.mysql.host contains unsupported characters");
-            }
-            if (port < 1 || port > 65535) throw new IllegalArgumentException("database.mysql.port is invalid");
-            database = requireText(database, "database.mysql.database");
-            if (containsPathOrUrlDelimiter(database)) {
-                throw new IllegalArgumentException("database.mysql.database contains unsupported characters");
-            }
-            username = requireText(username, "database.mysql.username");
-            password = Objects.requireNonNull(password, "password");
-            serverTimezone = requireText(serverTimezone, "database.mysql.server-timezone");
-            if (containsUrlDelimiter(serverTimezone)) {
-                throw new IllegalArgumentException(
-                        "database.mysql.server-timezone contains unsupported characters"
+                || TemplateRenderer.containsPlaceholderApiToken(
+                        display.tab().playerNameFormat().replace("%luckperms_prefix%", "")
+                )
+                || TemplateRenderer.containsPlaceholderApiToken(
+                        display.nameTagFormat().replace("%luckperms_prefix%", "")
                 );
-            }
-        }
-
-        private static String requireText(String value, String fieldName) {
-            String text = Objects.requireNonNull(value, fieldName).trim();
-            if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
-            return text;
-        }
-
-        private static boolean containsUrlDelimiter(String value) {
-            return value.indexOf('?') >= 0
-                    || value.indexOf('#') >= 0
-                    || value.indexOf('&') >= 0
-                    || value.chars().anyMatch(Character::isWhitespace);
-        }
-
-        private static boolean containsPathOrUrlDelimiter(String value) {
-            return value.indexOf('/') >= 0 || containsUrlDelimiter(value);
-        }
-
-        /**
-         * Builds the JDBC URL without credentials.
-         *
-         * @return MySQL JDBC URL
-         */
-        public String jdbcUrl() {
-            return "jdbc:mysql://" + host + ":" + port + "/" + database
-                    + "?useUnicode=true&characterEncoding=utf8"
-                    + "&useSSL=" + useSsl
-                    + "&serverTimezone=" + serverTimezone;
-        }
     }
 
     /**
@@ -338,109 +163,57 @@ public record DreamRPGSettings(
     }
 
     private record RawSettings(
-            @ConfigValue(
-                    path = "database.mode",
-                    defaultValue = "SQLITE"
-            )
-            DatabaseMode databaseMode,
-            @ConfigValue(
-                    path = "database.sqlite.file",
-                    defaultValue = "profiles.db",
-                    nonBlank = true
-            )
-            String sqliteFile,
-            @ConfigValue(
-                    path = "database.mysql.host",
-                    defaultValue = "127.0.0.1",
-                    nonBlank = true
-            )
-            String mysqlHost,
-            @ConfigValue(
-                    path = "database.mysql.port",
-                    defaultValue = "3306",
-                    positive = true
-            )
-            int mysqlPort,
-            @ConfigValue(
-                    path = "database.mysql.database",
-                    defaultValue = "dreamrpg",
-                    nonBlank = true
-            )
-            String mysqlDatabase,
-            @ConfigValue(
-                    path = "database.mysql.username",
-                    defaultValue = "root",
-                    nonBlank = true
-            )
-            String mysqlUsername,
-            @ConfigValue(
-                    path = "database.mysql.password",
-                    defaultValue = "",
-                    trim = false
-            )
-            String mysqlPassword,
-            @ConfigValue(
-                    path = "database.mysql.use-ssl",
-                    defaultValue = "false"
-            )
-            boolean mysqlUseSsl,
-            @ConfigValue(
-                    path = "database.mysql.server-timezone",
-                    defaultValue = "Asia/Shanghai",
-                    nonBlank = true
-            )
-            String mysqlServerTimezone,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "spawn.world",
                     defaultValue = "world",
                     nonBlank = true
             )
             String spawnWorld,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "spawn.teleport-on-join",
                     defaultValue = "true"
             )
             boolean teleportOnJoin,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "spawn.teleport-on-respawn",
                     defaultValue = "true"
             )
             boolean teleportOnRespawn,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "chat.format",
-                    defaultValue = "%luckperms_prefix% {prefix} {name}&7: &f{message}",
+                    defaultValue = "{member_prefix} {prefix} {name}&7: &f{message}",
                     nonBlank = true,
                     trim = false
             )
             String chatFormat,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "chat.color-permission",
                     defaultValue = "dreamrpg.chat.color",
                     nonBlank = true
             )
             String colorPermission,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "display.tab.header",
                     defaultValue = "",
                     trim = false
             )
             List<String> tabHeader,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "display.tab.footer",
                     defaultValue = "",
                     trim = false
             )
             List<String> tabFooter,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "display.tab.player-name-format",
-                    defaultValue = "{prefix}{name}        ",
+                    defaultValue = "{member_prefix} {prefix}{name}        ",
                     nonBlank = true,
                     trim = false
             )
             String playerNameFormat,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "display.name-tag-format",
-                    defaultValue = "{prefix}{name}",
+                    defaultValue = "{member_prefix} {prefix}{name}",
                     nonBlank = true,
                     trim = false
             )

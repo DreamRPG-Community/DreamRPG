@@ -36,9 +36,9 @@ class CombatFormulaTest {
 
         assertTrue(CombatFormula.critical(stats, 29.99D));
         assertFalse(CombatFormula.critical(stats, 30.0D));
-        assertEquals(1.3D, CombatFormula.criticalMultiplier(stats, true));
+        assertEquals(1.8D, CombatFormula.criticalMultiplier(stats, true));
         assertEquals(5.0D, CombatFormula.applyDefense(10.0D, stats.defensePercent()));
-        assertEquals(1.0D, CombatFormula.criticalMultiplier(CombatStatsSnapshot.empty(), true));
+        assertEquals(1.5D, CombatFormula.criticalMultiplier(CombatStatsSnapshot.empty(), true));
     }
 
     @Test
@@ -52,7 +52,7 @@ class CombatFormulaTest {
 
         assertEquals(0.0D, CombatFormula.damage(stats, 0.0D));
         assertEquals(0.0D, CombatFormula.damage(stats, 1.0D));
-        assertEquals(0.5D, CombatFormula.criticalMultiplier(stats, true));
+        assertEquals(1.0D, CombatFormula.criticalMultiplier(stats, true));
         assertEquals(15.0D, CombatFormula.applyDefense(10.0D, -50.0D));
         assertEquals(20.0D, CombatFormula.applyDefense(10.0D, -150.0D));
     }

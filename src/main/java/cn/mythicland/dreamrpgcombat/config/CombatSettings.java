@@ -13,6 +13,7 @@ import java.util.Objects;
 public final class CombatSettings {
 
     private final boolean feedbackEnabled;
+    private final double defenseConstant;
     private final Map<CombatStat, String> labels;
     private final String levelRequirementLabel;
     private final CombatMessages messages;
@@ -33,19 +34,41 @@ public final class CombatSettings {
             String levelRequirementLabel,
             CombatMessages messages
     ) {
+        this(feedbackEnabled, labels, levelRequirementLabel, messages, 600.0D);
+    }
+
+    CombatSettings(
+            boolean feedbackEnabled,
+            Map<CombatStat, String> labels,
+            String levelRequirementLabel,
+            CombatMessages messages,
+            double defenseConstant
+    ) {
+        if (!Double.isFinite(defenseConstant) || defenseConstant <= 0) {
+            throw new IllegalArgumentException("defenseConstant must be finite and positive");
+        }
+        this.defenseConstant = defenseConstant;
         this.feedbackEnabled = feedbackEnabled;
         Objects.requireNonNull(labels, "labels");
         EnumMap<CombatStat, String> copy = new EnumMap<>(CombatStat.class);
         copy.putAll(labels);
+        for (CombatStat stat : CombatStat.values()) copy.putIfAbsent(stat, stat.defaultDisplayName());
         this.labels = Collections.unmodifiableMap(copy);
         this.levelRequirementLabel = Objects.requireNonNull(levelRequirementLabel, "levelRequirementLabel");
         this.messages = Objects.requireNonNull(messages, "messages");
     }
 
     /**
-     * Returns whether triggered-effect messages are enabled.
+     * Returns the positive scale used by typed defense reduction.
      *
-     * @return true when feedback is enabled
+     * @return the positive defense scale
+     */
+    public double defenseConstant() {
+        return defenseConstant;
+    }
+
+    /**
+     * Returns whether triggered-effect messages are enabled.
      */
     public boolean feedbackEnabled() {
         return feedbackEnabled;

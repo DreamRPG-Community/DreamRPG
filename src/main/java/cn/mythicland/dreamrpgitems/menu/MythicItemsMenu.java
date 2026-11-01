@@ -1,10 +1,18 @@
 package cn.mythicland.dreamrpgitems.menu;
 
-import cn.mythicland.dreamlib.menu.MenuItems;
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.menu.MenuView;
-import cn.mythicland.dreamlib.menu.PageWindow;
+import cn.mythicland.framework.pagination.FolderLayout;
+
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
+import cn.mythicland.framework.bukkit.menu.InventoryMenu;
+import cn.mythicland.framework.bukkit.menu.MenuItems;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.pagination.PageWindow;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -13,35 +21,30 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
-import static cn.mythicland.dreamlib.menu.MenuPageLayout.*;
+import static cn.mythicland.framework.pagination.MenuPageLayout.*;
 
 /**
  * Configured item library with expandable folders and a fixed content grid.
  */
-public final class MythicItemsMenu implements MenuView {
+public final class MythicItemsMenu extends InventoryMenu {
     private final MythicItemService service;
-    private final ItemLibraryLayout layout;
+    private final FolderLayout layout;
     private final Set<String> expanded = new HashSet<>();
-    private List<ItemLibraryLayout.Row> rendered = List.of();
+    private List<FolderLayout.Row> rendered = List.of();
     private int page;
 
-    public MythicItemsMenu(MythicItemService service, ItemLibraryLayout layout) {
+    public MythicItemsMenu(MythicItemService service, FolderLayout layout) {
         this.service = Objects.requireNonNull(service, "service");
         this.layout = Objects.requireNonNull(layout, "layout");
     }
 
-    public void open(Player player, MenuService menus) {
+    public void open(Player player, MenuManager menus) {
         page = 0;
         menus.open(player, this);
     }
 
     @Override
-    public String title(Player player) {
+    public String buildTitle(Player player) {
         return "DreamRPG 物品库";
     }
 
@@ -55,7 +58,7 @@ public final class MythicItemsMenu implements MenuView {
         inventory.clear();
         rendered = layout.rows(expanded, id -> service.configuration(id).isPresent());
         PageWindow window = forEachEntry(rendered, page, (slot, row) -> {
-            ItemStack icon = MenuItems.icon(service.getItemStack(row.itemId(), 1));
+            ItemStack icon = MenuItems.icon(service.getItemStack(row.entryId(), 1));
             icon.setAmount(row.iconAmount());
             inventory.setItem(slot, icon);
         });
@@ -69,7 +72,7 @@ public final class MythicItemsMenu implements MenuView {
     }
 
     @Override
-    public void handleClick(Player player, InventoryClickEvent event, MenuService menus) {
+    public void handleClick(Player player, InventoryClickEvent event, MenuManager menus) {
         if (!player.hasPermission("dreamrpg.admin")) {
             menus.close(player);
             return;
@@ -91,14 +94,14 @@ public final class MythicItemsMenu implements MenuView {
         if (offset < 0) return;
         int index = window.startIndex() + offset;
         if (index >= window.endIndex()) return;
-        ItemLibraryLayout.Row row = rendered.get(index);
+        FolderLayout.Row row = rendered.get(index);
         if ((click == ClickType.RIGHT || click == ClickType.SHIFT_RIGHT) && row.folderId() != null) {
             if (!expanded.add(row.folderId())) expanded.remove(row.folderId());
             menus.refresh(player);
             return;
         }
         if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) return;
-        if (!player.getInventory().addItem(service.getItemStack(row.itemId(), 1)).isEmpty()) {
+        if (!player.getInventory().addItem(service.getItemStack(row.entryId(), 1)).isEmpty()) {
             player.sendMessage(ChatColor.RED + "背包已满, 请先腾出一个位置。");
         }
     }

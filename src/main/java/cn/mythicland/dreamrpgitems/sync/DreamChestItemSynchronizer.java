@@ -1,11 +1,5 @@
 package cn.mythicland.dreamrpgitems.sync;
 
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.plugin.PluginLookup;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshMode;
 import cn.mythicland.dreamrpgitems.api.MythicItemRefreshResult;
@@ -13,6 +7,18 @@ import cn.mythicland.dreamrpgitems.api.MythicItemRefreshStatus;
 import cn.mythicland.dreamrpgitems.api.MythicItemsChangedEvent;
 import cn.mythicland.dreamrpgitems.api.MythicItemsSyncRequestedEvent;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.plugin.PluginLookup;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
+
+import java.lang.reflect.*;
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -21,11 +27,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-import java.lang.reflect.*;
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
  * Optional DreamChest bridge. The DreamChest API is resolved only when the plugin is installed, so
  * the main DreamRPG item service classloader path remains valid without DreamChest.
@@ -33,7 +34,7 @@ import java.util.logging.Logger;
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
-public final class DreamChestItemSynchronizer implements DreamLibPluginLifecycle, Listener {
+public final class DreamChestItemSynchronizer implements ManagedLifecycle, Listener {
 
     private static final String MAGIC_CHEST_PLUGIN = "DreamChest";
     private static final String SYNC_API = "cn.mythicland.dreamchest.api.DreamChestItemSyncApi";
@@ -62,7 +63,7 @@ public final class DreamChestItemSynchronizer implements DreamLibPluginLifecycle
     }
 
     @Override
-    public void enable() {
+    public void load() {
         tasks.runLater(1L, this::synchronize);
     }
 
@@ -73,7 +74,7 @@ public final class DreamChestItemSynchronizer implements DreamLibPluginLifecycle
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         synchronizationDisabled = false;
         lastSynchronizedGeneration = Long.MIN_VALUE;
     }

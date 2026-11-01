@@ -3,8 +3,6 @@ package cn.mythicland.dreamrpg.config;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
-import java.net.URI;
-import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,69 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DreamRPGSettingsTest {
 
     @Test
-    void configuredSpawnAndDatabaseValuesBecomeImmutableSettings() {
+    void displayValuesBecomeImmutableSettings() {
         DreamRPGSettings settings = DreamRPGSettings.load(configuration());
 
-        assertEquals(URI.create("https://repo1.maven.org/maven2/"), settings.libraryRepository());
-        assertEquals(DreamRPGSettings.DatabaseMode.SQLITE, settings.database().mode());
-        assertEquals("profiles.db", settings.database().sqlite().fileName());
         assertEquals(List.of(), settings.display().tab().header());
         assertEquals(List.of(), settings.display().tab().footer());
         assertEquals(
-                "{prefix}{name}        ",
+                "{member_prefix} {prefix}{name}        ",
                 settings.display().tab().playerNameFormat()
         );
-        assertEquals("{prefix}{name}", settings.display().nameTagFormat());
-        assertEquals(
-                Path.of("C:/plugins/DreamRPG/profiles.db").toAbsolutePath().normalize(),
-                settings.databasePath(Path.of("C:/plugins/DreamRPG"))
-        );
-    }
-
-    @Test
-    void databaseFileCannotEscapeThePluginDataDirectory() {
-        YamlConfiguration configuration = configuration();
-        configuration.set("database.sqlite.file", "../outside.db");
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> DreamRPGSettings.load(configuration)
-        );
-    }
-
-    @Test
-    void mysqlSettingsBuildAConnectorJUrlWithoutExposingCredentials() {
-        DreamRPGSettings.MySqlSettings settings = new DreamRPGSettings.MySqlSettings(
-                "db.example.test",
-                3306,
-                "dreamrpg",
-                "rpg_user",
-                "secret-value",
-                false,
-                "Asia/Shanghai"
-        );
-
-        assertEquals(
-                "jdbc:mysql://db.example.test:3306/dreamrpg"
-                        + "?useUnicode=true&characterEncoding=utf8"
-                        + "&useSSL=false&serverTimezone=Asia/Shanghai",
-                settings.jdbcUrl()
-        );
-    }
-
-    @Test
-    void databaseModeSelectsTheIndependentMysqlConfigurationSection() {
-        YamlConfiguration configuration = configuration();
-        configuration.set("database.mode", "mysql");
-        configuration.set("database.mysql.host", "mysql.example.test");
-        configuration.set("database.mysql.database", "dreamrpg_live");
-
-        DreamRPGSettings settings = DreamRPGSettings.load(configuration);
-
-        assertEquals(DreamRPGSettings.DatabaseMode.MYSQL, settings.database().mode());
-        assertEquals("mysql.example.test", settings.database().mysql().host());
-        assertEquals("dreamrpg_live", settings.database().mysql().database());
-        assertEquals("profiles.db", settings.database().sqlite().fileName());
+        assertEquals("{member_prefix} {prefix}{name}", settings.display().nameTagFormat());
     }
 
     @Test
@@ -126,23 +71,8 @@ class DreamRPGSettingsTest {
         assertTrue(settings.containsPlaceholderApiToken());
     }
 
-    @Test
-    void legacyStorageSettingIsNotConvertedIntoTheNewDatabaseMode() {
-        YamlConfiguration configuration = configuration();
-        configuration.set("database.mode", null);
-        configuration.set("database.storage", "mysql");
-
-        assertThrows(
-                IllegalStateException.class,
-                () -> DreamRPGSettings.load(configuration)
-        );
-    }
-
     private static YamlConfiguration configuration() {
         YamlConfiguration configuration = new YamlConfiguration();
-        configuration.set("libraries.repository", "https://repo.example.test/maven/");
-        configuration.set("database.mode", "sqlite");
-        configuration.set("database.sqlite.file", "profiles.db");
         configuration.set("spawn.world", "world");
         configuration.set("spawn.x", 0.5D);
         configuration.set("spawn.y", 7.0D);

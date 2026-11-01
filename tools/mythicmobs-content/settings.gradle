@@ -1,0 +1,3 @@
+apply from: "../../../../../../MythicLand/plugins/MythicFramework/gradle/workspace-build-lock.gradle"
+rootProject.name = "mythicmobs-content"
+includeBuild("../../../../../../MythicLand/plugins/MythicFramework")

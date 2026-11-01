@@ -1,0 +1,1 @@
+ALTER TABLE player_settings ADD COLUMN auto_pickup BOOLEAN NOT NULL DEFAULT FALSE

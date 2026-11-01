@@ -7,6 +7,7 @@ depend:
 - DreamLib
 - DreamWorld
 - MythicMobs
+- ProtocolLib
 - DreamNPC
 - DreamChest
 softdepend:
@@ -16,6 +17,7 @@ softdepend:
 - ViaVersion
 - ViaBackwards
 - ViaRewind
+- LuckPerms
 loadbefore:
 - QuickShop
 description: Shared RPG foundation for the DreamRPG server.
@@ -32,6 +34,10 @@ commands:
   setspawn:
     description: Set the DreamRPG main-city spawn.
     permission: dreamrpg.admin
+  heal:
+    description: Restore your health or an online player's health to full.
+    usage: /heal [player]
+    permission: dreamrpg.admin
   gm:
     description: Change the executing player's game mode.
     permission: dreamrpg.admin
@@ -39,6 +45,18 @@ commands:
     description: Open the DreamRPG custom ender chest.
     aliases:
     - ec
+  inv:
+    description: Open an online player's inventory for editing.
+    aliases:
+    - inventory
+  settings:
+    description: Open the DreamRPG player settings menu.
+    usage: /settings
+  member:
+    description: Manage MythicMemberLib memberships.
+    aliases:
+    - mythicmembership
+    - mms
 permissions:
   dreamrpg.admin:
     description: Allows DreamRPG administration commands.
@@ -60,3 +78,6 @@ permissions:
   dreamrpg.quests:
     description: Open task and NPC exchange menus.
     default: true
+  mythicmembership.admin:
+    description: Allows membership administration commands.
+    default: op

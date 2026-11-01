@@ -3,10 +3,11 @@ package cn.mythicland.dreamrpg.economy;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.CoinTransaction;
 import cn.mythicland.dreamrpg.database.CoinStore;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CoinAccountService implements CoinService {
 
     private static final BigDecimal ZERO = new BigDecimal("0.00");
+    private static final BigDecimal MAXIMUM = new BigDecimal("99999999999999999.99");
 
     private final CoinStore store;
     private final ConcurrentHashMap<UUID, BigDecimal> balances = new ConcurrentHashMap<>();
@@ -53,6 +55,27 @@ public final class CoinAccountService implements CoinService {
         Objects.requireNonNull(uniqueId, "uniqueId");
         synchronized (lockFor(uniqueId)) {
             return balances.computeIfAbsent(uniqueId, this::loadBalance);
+        }
+    }
+
+    @Override
+    public BigDecimal setBalance(UUID uniqueId, BigDecimal amount) {
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        BigDecimal target;
+        try {
+            target = Objects.requireNonNull(amount, "amount").setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException("amount must have at most two decimal places", exception);
+        }
+        if (target.signum() < 0) throw new IllegalArgumentException("amount cannot be negative");
+        if (target.compareTo(MAXIMUM) > 0) throw new IllegalArgumentException("amount exceeds maximum balance");
+        synchronized (lockFor(uniqueId)) {
+            BigDecimal current = balances.computeIfAbsent(uniqueId, this::loadBalance);
+            BigDecimal delta = target.subtract(current);
+            if (delta.signum() == 0) return current;
+            BigDecimal next = adjust(uniqueId, delta);
+            balances.put(uniqueId, next);
+            return next;
         }
     }
 

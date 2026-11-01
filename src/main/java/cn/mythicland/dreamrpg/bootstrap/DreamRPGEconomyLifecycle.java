@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpg.bootstrap;
 
 import cn.mythicland.dreamrpg.economy.VaultEconomyProvider;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
 
 import java.util.Objects;
 
@@ -10,7 +10,7 @@ import java.util.Objects;
  * Owns Vault economy registration for the DreamRPG coin ledger.
  */
 @LifecycleComponent
-public final class DreamRPGEconomyLifecycle implements DreamLibPluginLifecycle {
+public final class DreamRPGEconomyLifecycle implements ManagedLifecycle {
 
     private final VaultEconomyProvider provider;
 
@@ -24,7 +24,7 @@ public final class DreamRPGEconomyLifecycle implements DreamLibPluginLifecycle {
     }
 
     @Override
-    public void enable() {
+    public void load() {
         provider.register();
     }
 
@@ -34,7 +34,7 @@ public final class DreamRPGEconomyLifecycle implements DreamLibPluginLifecycle {
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         provider.unregister();
     }
 }

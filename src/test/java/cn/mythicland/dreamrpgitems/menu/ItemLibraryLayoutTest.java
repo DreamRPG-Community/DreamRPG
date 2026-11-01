@@ -1,5 +1,7 @@
 package cn.mythicland.dreamrpgitems.menu;
 
+import cn.mythicland.framework.pagination.FolderLayout;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -32,18 +34,18 @@ class ItemLibraryLayoutTest {
                     order: 30
                     item: sword
                 """);
-        ItemLibraryLayout layout = ItemLibraryConfiguration.load(directory);
+        FolderLayout layout = ItemLibraryConfiguration.load(directory);
         assertEquals(List.of(
-                new ItemLibraryLayout.Row("copper", "currency", 2),
-                new ItemLibraryLayout.Row("starter", "armor", 3),
-                new ItemLibraryLayout.Row("sword", null, 1)
+                new FolderLayout.Row("copper", "currency", 2),
+                new FolderLayout.Row("starter", "armor", 3),
+                new FolderLayout.Row("sword", null, 1)
         ), layout.rows(Set.of(), ignored -> true));
         assertEquals(List.of(
-                new ItemLibraryLayout.Row("copper", "currency", 2),
-                new ItemLibraryLayout.Row("starter", "armor", 1),
-                new ItemLibraryLayout.Row("level0", "armor", 1),
-                new ItemLibraryLayout.Row("level1", "armor", 1),
-                new ItemLibraryLayout.Row("sword", null, 1)
+                new FolderLayout.Row("copper", "currency", 2),
+                new FolderLayout.Row("starter", "armor", 1),
+                new FolderLayout.Row("level0", "armor", 1),
+                new FolderLayout.Row("level1", "armor", 1),
+                new FolderLayout.Row("sword", null, 1)
         ), layout.rows(Set.of("armor"), ignored -> true));
         assertEquals(1, layout.rows(Set.of(), id -> !id.equals("level0") && !id.equals("level1")).get(1).iconAmount());
     }

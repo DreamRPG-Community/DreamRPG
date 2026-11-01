@@ -1,23 +1,24 @@
 package cn.mythicland.dreamrpg.starter;
 
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.menu.StatefulMenuView;
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.menu.InventoryMenu;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+
+import java.util.Objects;
+import java.util.UUID;
+import java.util.function.Consumer;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 
-import java.util.Objects;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 /**
  * Fixed-size first-join reward menu. The editor is mutable, while the player view only permits
  * taking items from the top inventory.
  */
-final class FirstJoinRewardMenu implements StatefulMenuView {
+final class FirstJoinRewardMenu extends InventoryMenu {
 
     private static final String PLAYER_TITLE = "&8首次进入奖励";
     private static final String EDITOR_TITLE = "&8首次进入奖励管理";
@@ -53,7 +54,7 @@ final class FirstJoinRewardMenu implements StatefulMenuView {
     }
 
     @Override
-    public String title(Player player) {
+    public String buildTitle(Player player) {
         Objects.requireNonNull(player, "player");
         return LegacyText.colorize(editor ? EDITOR_TITLE : PLAYER_TITLE);
     }
@@ -71,7 +72,7 @@ final class FirstJoinRewardMenu implements StatefulMenuView {
     }
 
     @Override
-    public void handleClick(Player player, InventoryClickEvent event, MenuService menuService) {
+    public void handleClick(Player player, InventoryClickEvent event, MenuManager menuService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(event, "event");
         Objects.requireNonNull(menuService, "menuService");
@@ -87,7 +88,7 @@ final class FirstJoinRewardMenu implements StatefulMenuView {
     }
 
     @Override
-    public void handleDrag(Player player, InventoryDragEvent event, MenuService menuService) {
+    public void handleDrag(Player player, InventoryDragEvent event, MenuManager menuService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(event, "event");
         Objects.requireNonNull(menuService, "menuService");

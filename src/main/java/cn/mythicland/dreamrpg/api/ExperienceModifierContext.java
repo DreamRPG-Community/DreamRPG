@@ -1,5 +1,7 @@
 package cn.mythicland.dreamrpg.api;
 
+import cn.mythicland.framework.validation.TextValidation;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,15 +28,10 @@ public record ExperienceModifierContext(
      */
     public ExperienceModifierContext {
         uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
-        source = requireText(source, "source");
-        sourceId = requireText(sourceId, "sourceId");
+        source = TextValidation.requireText(source, "source");
+        sourceId = TextValidation.requireText(sourceId, "sourceId");
         if (level < 0L) throw new IllegalArgumentException("level cannot be negative");
         metadata = Map.copyOf(Objects.requireNonNull(metadata, "metadata"));
     }
 
-    private static String requireText(String value, String fieldName) {
-        String text = Objects.requireNonNull(value, fieldName).trim();
-        if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
-        return text;
-    }
 }

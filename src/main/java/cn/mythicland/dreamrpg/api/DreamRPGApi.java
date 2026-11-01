@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Read-only service contract exposed by DreamRPG through Bukkit's ServicesManager.
+ * Player profile service contract exposed by DreamRPG through Bukkit's ServicesManager.
  */
 public interface DreamRPGApi {
 
@@ -28,6 +28,15 @@ public interface DreamRPGApi {
      * @return future completed with an immutable profile snapshot
      */
     CompletableFuture<PlayerProfile> loadProfile(UUID uniqueId);
+
+    /**
+     * Changes and persists a player's configured career.
+     *
+     * @param uniqueId player UUID
+     * @param careerId target career identifier
+     * @return future completed after the profile cache and career-change event are updated
+     */
+    CompletableFuture<PlayerProfile> changeCareer(UUID uniqueId, String careerId);
 
     /**
      * Finds a configured career.

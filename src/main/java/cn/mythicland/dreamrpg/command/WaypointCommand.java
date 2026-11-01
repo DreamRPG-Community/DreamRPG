@@ -1,22 +1,27 @@
 package cn.mythicland.dreamrpg.command;
 
+import cn.mythicland.framework.bukkit.content.ContentWorkspace;
+import cn.mythicland.framework.bukkit.content.ContentUpdate;
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-
-import java.util.Objects;
-
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.dreamlib.command.CommandContext;
-import cn.mythicland.dreamlib.text.LegacyText;
-import cn.mythicland.dreamlib.menu.MenuView;
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.menu.MenuItems;
 import cn.mythicland.dreamworld.api.DreamWorldApi;
 import cn.mythicland.dreamworldregion.api.DreamWorldRegionApi;
+import cn.mythicland.framework.bukkit.command.CommandBinding;
+import cn.mythicland.framework.bukkit.command.CommandContext;
+import cn.mythicland.framework.bukkit.command.CommandRoute;
+import cn.mythicland.framework.bukkit.menu.InventoryMenu;
+import cn.mythicland.framework.bukkit.menu.MenuItems;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.ManagedLifecycle;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -24,15 +29,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Configurable fixed-map travel, including aliases used by migrated NPC interactions.
  */
-@CommandComponent("warp")
-public final class WaypointCommand implements DreamLibPluginLifecycle {
+@CommandBinding("warp")
+public final class WaypointCommand implements ManagedLifecycle {
     private final Map<String, Waypoint> waypoints = new LinkedHashMap<>();
     private final DreamLibApi lib;
     private final JavaPlugin plugin;
@@ -49,34 +50,37 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
     }
 
     @Override
-    public void enable() {
+    public void load() {
         reload();
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         waypoints.clear();
     }
 
     @Override
     public void reload() {
-        Map<String, Waypoint> previous = new LinkedHashMap<>(waypoints);
-        waypoints.clear();
-        try {
-            load();
-        } catch (RuntimeException error) {
-            waypoints.clear();
-            waypoints.putAll(previous);
-            throw error;
-        }
+        prepareContentReload().apply().run();
     }
 
-    private void load() {
-        var file = plugin.getDataFolder().toPath().resolve("waypoints.yml");
-        if (!java.nio.file.Files.exists(file)) {
-            plugin.saveResource("waypoints.yml", false);
-        }
-        var configuration = YamlConfiguration.loadConfiguration(file.toFile());
+    /** @return validated waypoint aliases and an inverse retaining the current destinations */
+    public ContentUpdate prepareContentReload() {
+        Map<String, Waypoint> next = loadWaypoints();
+        Map<String, Waypoint> previous = new LinkedHashMap<>(waypoints);
+        return new ContentUpdate(() -> {
+            waypoints.clear();
+            waypoints.putAll(next);
+        }, () -> {
+            waypoints.clear();
+            waypoints.putAll(previous);
+        });
+    }
+
+    private Map<String, Waypoint> loadWaypoints() {
+        Map<String, Waypoint> next = new LinkedHashMap<>();
+        if (lib.content().documents("waypoints.yml").isEmpty()) lib.content().resource(plugin, "waypoints.yml", "common/waypoints.yml");
+        var configuration = lib.content().document("waypoints.yml").yaml();
         var entries = configuration.getConfigurationSection("waypoints");
         if (entries == null) {
             throw new IllegalStateException("waypoints.yml requires a waypoints section");
@@ -99,20 +103,21 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
             var waypoint = new Waypoint(id, entry.getString("name"), entry.getString("world"),
                     entry.getString("landmark"), entry.getBoolean("enabled", true),
                     entry.getBoolean("show-in-menu", true));
-            put(id, waypoint);
+            put(next, id, waypoint);
             for (String alias : entry.getStringList("aliases")) {
-                put(alias, waypoint);
+                put(next, alias, waypoint);
             }
         }
+        return next;
     }
 
-    private void put(String alias, Waypoint waypoint) {
-        if (waypoints.putIfAbsent(alias, waypoint) != null) {
+    private void put(Map<String, Waypoint> next, String alias, Waypoint waypoint) {
+        if (next.putIfAbsent(alias, waypoint) != null) {
             throw new IllegalStateException("Duplicate waypoint alias: " + alias);
         }
     }
 
-    @CommandHandler(usage = "/warp <地点>")
+    @CommandRoute(path = {"warp"}, maxArguments = Integer.MAX_VALUE, usages = "/warp <地点>")
     void teleport(CommandContext context) {
         if (!(context.sender() instanceof Player player)) {
             context.sender().sendMessage("Only players can travel.");
@@ -175,11 +180,11 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
 
     private void openMenu(Player player) {
         List<Waypoint> destinations = waypoints.values().stream().distinct().filter(Waypoint::showInMenu).toList();
-        lib.menuService().open(player, new MenuView() {
+        lib.menuService().open(player, new InventoryMenu() {
             private int page;
 
             @Override
-            public String title(Player viewer) {
+            public String buildTitle(Player viewer) {
                 return LegacyText.colorize("&8旅途 · 地图传送");
             }
 
@@ -202,7 +207,7 @@ public final class WaypointCommand implements DreamLibPluginLifecycle {
             }
 
             @Override
-            public void handleClick(Player viewer, InventoryClickEvent event, MenuService menus) {
+            public void handleClick(Player viewer, InventoryClickEvent event, MenuManager menus) {
                 if (event.getClick() != ClickType.LEFT) {
                     return;
                 }

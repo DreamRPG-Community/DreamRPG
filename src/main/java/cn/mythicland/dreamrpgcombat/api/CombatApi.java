@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * Read-only public service exposed by DreamRPG combat.
+ * Main-thread combat attributes and typed skill damage exposed by DreamRPG.
  */
 public interface CombatApi {
 
@@ -33,4 +33,22 @@ public interface CombatApi {
      * @return immutable parsed values and skipped supported lines
      */
     CombatItemStats parseItem(ItemStack itemStack);
+
+    /**
+     * Schedules health and movement refresh after a plugin changes equipment programmatically.
+     *
+     * @param player online player; call from the server thread
+     */
+    void refresh(Player player);
+
+    /**
+     * Inflicts one typed skill hit through Bukkit events, preserving cancellation and attribution.
+     * The skill amount is not replaced with weapon damage. Must be called on the server thread.
+     *
+     * @param source        living caster
+     * @param target        living victim
+     * @param specification immutable damage and scaling rules
+     * @throws IllegalStateException if called outside the server thread
+     */
+    void damage(LivingEntity source, LivingEntity target, CombatDamageSpec specification);
 }

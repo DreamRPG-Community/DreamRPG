@@ -18,6 +18,25 @@ public interface ExperienceApi {
     ExperienceSnapshot snapshot(UUID uniqueId);
 
     /**
+     * Sets a ready player's RPG level and clears progress within that level.
+     *
+     * @param uniqueId player UUID
+     * @param level    non-negative target level
+     * @return updated snapshot
+     */
+    ExperienceSnapshot setLevel(UUID uniqueId, long level);
+
+    /**
+     * Sets experience accumulated from the start of the player's current level. Any amount that
+     * crosses one or more level thresholds is converted into levels by the normal RPG curve.
+     *
+     * @param uniqueId player UUID
+     * @param amount   non-negative experience amount
+     * @return updated snapshot
+     */
+    ExperienceSnapshot setExperience(UUID uniqueId, BigDecimal amount);
+
+    /**
      * Returns whether the player's DreamRPG data has been applied and is ready for mutations.
      *
      * @param uniqueId player UUID

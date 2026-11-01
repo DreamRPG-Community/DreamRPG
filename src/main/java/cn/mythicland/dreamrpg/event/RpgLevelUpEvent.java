@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpg.event;
 
+import cn.mythicland.framework.validation.TextValidation;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
@@ -45,8 +46,8 @@ public final class RpgLevelUpEvent extends Event {
         }
         this.previousLevel = previousLevel;
         this.currentLevel = currentLevel;
-        this.source = requireText(source, "source");
-        this.sourceId = requireText(sourceId, "sourceId");
+        this.source = TextValidation.requireText(source, "source");
+        this.sourceId = TextValidation.requireText(sourceId, "sourceId");
     }
 
     /**
@@ -56,12 +57,6 @@ public final class RpgLevelUpEvent extends Event {
      */
     public static HandlerList getHandlerList() {
         return HANDLERS;
-    }
-
-    private static String requireText(String value, String fieldName) {
-        String text = Objects.requireNonNull(value, fieldName).trim();
-        if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
-        return text;
     }
 
     public UUID uniqueId() {

@@ -1,17 +1,19 @@
 package cn.mythicland.dreamrpg.starter;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.item.ItemStackArrayCodec;
-import cn.mythicland.dreamlib.storage.AtomicYamlStore;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
+import cn.mythicland.framework.bukkit.item.ItemStackArrayCodec;
+import cn.mythicland.framework.bukkit.storage.AtomicYamlStore;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import cn.mythicland.framework.bukkit.content.ContentWorkspace;
 import java.util.Objects;
+
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Persists the editable first-join reward inventory in one atomic YAML file.
@@ -32,7 +34,7 @@ public final class FirstJoinRewardStore {
      */
     public FirstJoinRewardStore(JavaPlugin plugin) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
-        this.target = plugin.getDataFolder().toPath().resolve(RESOURCE_NAME).toAbsolutePath().normalize();
+        this.target = cn.mythicland.dreamlib.api.DreamLibApi.contentFor(plugin).resolve("DreamRPG/" + RESOURCE_NAME, RESOURCE_NAME);
     }
 
     /**
@@ -80,7 +82,7 @@ public final class FirstJoinRewardStore {
             throw new IllegalStateException("Could not create DreamRPG data directory", exception);
         }
         if (!Files.exists(target, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(target)) {
-            plugin.saveResource(RESOURCE_NAME, false);
+            cn.mythicland.dreamlib.api.DreamLibApi.contentFor(plugin).resource(plugin, RESOURCE_NAME, RESOURCE_NAME);
         }
         if (Files.isSymbolicLink(target) || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)) {
             throw new IllegalStateException("First-join reward file is not a regular file: " + target);

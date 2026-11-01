@@ -1,15 +1,18 @@
 package cn.mythicland.dreamrpgcombat.actionbar;
 
+import cn.mythicland.dreamrpgcombat.api.CombatDamageType;
+import cn.mythicland.framework.bukkit.entity.EntityAbsorption;
 import cn.mythicland.dreamrpgcombat.integration.mythicmobs.MythicMobsAdapter;
-import cn.mythicland.dreamlib.text.LegacyActionBar;
+import cn.mythicland.framework.bukkit.text.v1_12_R1.LegacyActionBar;
+
+import java.util.*;
+import java.util.function.LongSupplier;
+
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-
-import java.util.*;
-import java.util.function.LongSupplier;
 
 /**
  * Owns temporary target health bars shown after player attacks.
@@ -19,7 +22,7 @@ public final class CombatHealthBarService {
     private static final long DISPLAY_MILLIS = 2_000L;
     private final LongSupplier currentTimeMillis;
     private final MythicMobsAdapter mythicMobsAdapter;
-    private final Map<UUID, CombatHealthBarStatus> statusByAttacker = new HashMap<>();
+    private final Map<UUID, TrackedBar> statusByAttacker = new HashMap<>();
 
     public CombatHealthBarService() {
         this(System::currentTimeMillis, MythicMobsAdapter.detect());
@@ -56,27 +59,89 @@ public final class CombatHealthBarService {
      * @param damage   final event damage after DreamRPG combat's adjustments
      */
     public void recordHit(Player attacker, LivingEntity target, double damage) {
+        recordHit(attacker, target, damage, 0, CombatDamageType.PHYSICAL);
+    }
+
+    /**
+     * Records one hit before Bukkit applies it, on the server thread.
+     *
+     * @param attacker       player who caused the hit
+     * @param target         non-player living target
+     * @param damage         final event damage to health, after absorption
+     * @param absorbedDamage damage consumed by absorption in the same event
+     * @param type           resolved RPG damage channel
+     */
+    public void recordHit(
+            Player attacker,
+            LivingEntity target,
+            double damage,
+            double absorbedDamage,
+            CombatDamageType type
+    ) {
         if (attacker == null || !attacker.isOnline()) return;
         if (target == null || target instanceof Player) return;
 
+        this.recordHealthStatus(
+                attacker,
+                target,
+                this.targetDisplayName(target),
+                damage,
+                absorbedDamage,
+                type
+        );
+    }
+
+    /**
+     * Records a MythicMob hit for the damaged player's own action bar.
+     *
+     * @param victim         player who received the hit
+     * @param damage         final event damage to health, after absorption
+     * @param absorbedDamage damage consumed by absorption in the same event
+     * @param type           resolved RPG damage channel
+     */
+    public void recordIncomingHit(
+            Player victim,
+            double damage,
+            double absorbedDamage,
+            CombatDamageType type
+    ) {
+        if (victim == null || !victim.isOnline()) return;
+        this.recordHealthStatus(victim, victim, "你", damage, absorbedDamage, type);
+    }
+
+    private void recordHealthStatus(
+            Player viewer,
+            LivingEntity target,
+            String displayName,
+            double damage,
+            double absorbedDamage,
+            CombatDamageType type
+    ) {
+
         double maxHealth = maxHealth(target);
         double currentHealth = Math.clamp(target.getHealth(), 0.0D, maxHealth);
-        // Paper 1.12.2 exposes absorption only on Player, while this bar intentionally targets mobs.
-        double absorption = 0.0D;
-        double totalDamage = nonNegativeFinite(damage);
-        double healthDamage = Math.clamp(totalDamage - absorption, 0.0D, currentHealth);
-        double remainingAbsorption = Math.max(0.0D, absorption - totalDamage);
+        double absorption = nonNegativeFinite(EntityAbsorption.get(target));
+        double healthDamage = Math.clamp(nonNegativeFinite(damage), 0.0D, currentHealth);
+        double absorbed = Math.min(absorption, nonNegativeFinite(absorbedDamage));
+        CombatHealthBarStatus previous = currentStatus(viewer);
+        double maxAbsorption = absorption;
+        if (previous != null && previous.targetUniqueId().equals(target.getUniqueId())) {
+            maxAbsorption = Math.max(maxAbsorption, previous.maxAbsorption());
+        }
         CombatHealthBarStatus status = CombatHealthBarStatus.builder()
                 .targetUniqueId(target.getUniqueId())
-                .targetDisplayName(targetDisplayName(target))
+                .targetDisplayName(displayName)
                 .remainingHealth(Math.max(0.0D, currentHealth - healthDamage))
-                .remainingAbsorption(remainingAbsorption)
+                .remainingAbsorption(absorption - absorbed)
+                .maxAbsorption(maxAbsorption)
+                .finalDamage(nonNegativeFinite(damage) + absorbed)
+                .damageType(type)
                 .maxHealth(maxHealth)
                 .healthDamage(healthDamage)
                 .expiresAtMillis(this.currentTimeMillis.getAsLong() + DISPLAY_MILLIS)
                 .build();
-        statusByAttacker.put(attacker.getUniqueId(), status);
-        refresh(attacker);
+        statusByAttacker.put(viewer.getUniqueId(), new TrackedBar(target, status));
+        render(viewer);
     }
 
     /**
@@ -119,8 +184,9 @@ public final class CombatHealthBarService {
 
     CombatHealthBarStatus currentStatus(Player attacker) {
         if (attacker == null) return null;
-        CombatHealthBarStatus status = statusByAttacker.get(attacker.getUniqueId());
-        if (status == null) return null;
+        TrackedBar tracked = statusByAttacker.get(attacker.getUniqueId());
+        if (tracked == null) return null;
+        CombatHealthBarStatus status = tracked.status();
         if (status.expired(currentTimeMillis.getAsLong())) {
             statusByAttacker.remove(attacker.getUniqueId());
             return null;
@@ -128,13 +194,41 @@ public final class CombatHealthBarService {
         return status;
     }
 
-    private void refresh(Player attacker) {
+    /**
+     * Refreshes a visible bar from its target's committed health, including later regeneration.
+     * Call on the server thread while the combat component is active.
+     *
+     * @param attacker online viewer whose temporary bar should be synchronized
+     */
+    public void refresh(Player attacker) {
+        CombatHealthBarStatus status = currentStatus(attacker);
+        if (status == null) {
+            render(attacker);
+            return;
+        }
+        LivingEntity target = statusByAttacker.get(attacker.getUniqueId()).target();
+        if (!target.isValid() && !target.isDead()) {
+            clear(attacker);
+            return;
+        }
+        double maximum = maxHealth(target);
+        double health = Math.clamp(target.getHealth(), 0.0D, maximum);
+        double absorption = nonNegativeFinite(EntityAbsorption.get(target));
+        statusByAttacker.put(attacker.getUniqueId(), new TrackedBar(target,
+                status.withVitals(health, maximum, absorption)));
+        render(attacker);
+    }
+
+    private void render(Player attacker) {
         CombatHealthBarStatus status = currentStatus(attacker);
         if (status == null) {
             LegacyActionBar.send(attacker, "");
             return;
         }
         LegacyActionBar.send(attacker, CombatHealthBarFormatter.render(status));
+    }
+
+    private record TrackedBar(LivingEntity target, CombatHealthBarStatus status) {
     }
 
     private String targetDisplayName(LivingEntity target) {

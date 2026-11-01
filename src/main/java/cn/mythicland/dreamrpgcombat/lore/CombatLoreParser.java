@@ -1,11 +1,11 @@
 package cn.mythicland.dreamrpgcombat.lore;
 
 import cn.mythicland.dreamrpgcombat.config.CombatSettings;
-import cn.mythicland.dreamlib.item.LoreAttributeLine;
-import cn.mythicland.dreamlib.item.LoreAttributeParseResult;
-import cn.mythicland.dreamlib.item.LoreAttributeParser;
-import cn.mythicland.dreamlib.item.NumericRange;
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.item.LoreAttributeLine;
+import cn.mythicland.framework.bukkit.item.LoreAttributeParseResult;
+import cn.mythicland.framework.bukkit.item.LoreAttributeParser;
+import cn.mythicland.framework.bukkit.item.NumericRange;
+import cn.mythicland.framework.bukkit.text.LegacyText;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -15,17 +15,19 @@ public final class CombatLoreParser {
     private static final double MAX_ATTRIBUTE_VALUE = 1_000_000_000.0D;
     private static final Pattern LEVEL_SUFFIX = Pattern.compile("级$");
 
-    private final Map<String, CombatStat> aliases;
+    private final Map<String, List<CombatStat>> aliases;
     private final Set<String> levelAliases;
 
     public CombatLoreParser(CombatSettings settings) {
         CombatSettings validatedSettings = Objects.requireNonNull(settings, "settings");
-        Map<String, CombatStat> mutableAliases = new HashMap<>();
+        Map<String, List<CombatStat>> mutableAliases = new HashMap<>();
         for (CombatStat stat : CombatStat.values()) {
             for (String alias : stat.aliases()) {
-                mutableAliases.putIfAbsent(normalize(alias), stat);
+                mutableAliases.computeIfAbsent(normalize(alias), key -> new ArrayList<>()).add(stat);
             }
-            mutableAliases.putIfAbsent(normalize(validatedSettings.labelText(stat)), stat);
+            String configured = normalize(validatedSettings.labelText(stat));
+            List<CombatStat> matches = mutableAliases.computeIfAbsent(configured, key -> new ArrayList<>());
+            if (!matches.contains(stat)) matches.add(stat);
         }
         aliases = Map.copyOf(mutableAliases);
         Set<String> mutableLevelAliases = new HashSet<>(List.of("需要等级", "等级", "装备等级", "等级限制"));
@@ -91,7 +93,12 @@ public final class CombatLoreParser {
             if (result.status() == LoreAttributeParseResult.Status.NOT_ATTRIBUTE) continue;
 
             String label = result.label().map(this::normalize).orElse("");
-            CombatStat stat = aliases.get(label);
+            List<CombatStat> candidates = aliases.getOrDefault(label, List.of());
+            boolean percent = result.attribute().map(attribute -> attribute.value().percent()).orElse(false);
+            CombatStat stat = candidates.stream()
+                    .filter(candidate -> candidate.percentageAttribute() == percent)
+                    .findFirst()
+                    .orElse(candidates.size() == 1 ? candidates.getFirst() : null);
             if (stat == null && levelAliases.contains(label)) {
                 try {
                     NumericRange level = parseLevelValue(line, result);

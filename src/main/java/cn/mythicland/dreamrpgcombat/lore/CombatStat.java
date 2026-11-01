@@ -8,8 +8,8 @@ import java.util.List;
 public enum CombatStat {
     DAMAGE(
             "damage",
-            "伤害",
-            List.of("伤害", "伤害值"),
+            "物理攻击",
+            List.of("伤害", "伤害值", "物理攻击", "物理伤害"),
             false,
             CombatStatType.PERMANENT
     ),
@@ -54,7 +54,80 @@ public enum CombatStat {
             List.of("经验加成", "经验倍率"),
             true,
             CombatStatType.PERMANENT
+    ),
+    MAGIC_DAMAGE(
+            "magic-damage",
+            "法术攻击",
+            List.of("法术攻击", "法术伤害", "魔法伤害"),
+            false,
+            CombatStatType.PERMANENT
+    ),
+    PHYSICAL_DEFENSE(
+            "physical-defense",
+            "物理防御",
+            List.of("物理防御"),
+            false,
+            CombatStatType.PERMANENT
+    ),
+    MAGIC_DEFENSE(
+            "magic-defense",
+            "法术防御",
+            List.of("法术防御", "魔法防御"),
+            false,
+            CombatStatType.PERMANENT
+    ),
+    PHYSICAL_PENETRATION(
+            "physical-penetration",
+            "物理穿透",
+            List.of("物理穿透"),
+            false,
+            CombatStatType.PERMANENT
+    ),
+    PHYSICAL_PENETRATION_PERCENT(
+            "physical-penetration-percent",
+            "物理穿透",
+            List.of("物理穿透"),
+            true,
+            CombatStatType.PERMANENT
+    ),
+    MAGIC_PENETRATION(
+            "magic-penetration",
+            "法术穿透",
+            List.of("法术穿透"),
+            false,
+            CombatStatType.PERMANENT
+    ),
+    MAGIC_PENETRATION_PERCENT(
+            "magic-penetration-percent",
+            "法术穿透",
+            List.of("法术穿透"),
+            true,
+            CombatStatType.PERMANENT
+    ),
+    MOVEMENT_SPEED(
+            "movement-speed",
+            "移动速度",
+            List.of("移动速度", "速度"),
+            true,
+            CombatStatType.PERMANENT
+    ),
+    LIFESTEAL(
+            "lifesteal",
+            "嗜血",
+            List.of("嗜血", "吸血"),
+            true,
+            CombatStatType.PERMANENT
     );
+
+    /**
+     * Returns whether this is a typed attribute added after the legacy combat contract.
+     */
+    public boolean extended() {
+        return switch (this) {
+            case DAMAGE, DEFENSE, HEALTH, HEALTH_REGEN, CRIT_CHANCE, CRIT_DAMAGE, EXPERIENCE_BONUS -> false;
+            default -> true;
+        };
+    }
 
     private final String configKey;
     private final String defaultDisplayName;

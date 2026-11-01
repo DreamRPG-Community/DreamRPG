@@ -3,10 +3,9 @@ package cn.mythicland.dreamrpg.database;
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.api.PlayerVitals;
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.database.SqlDatabase;
-import cn.mythicland.dreamlib.item.ItemStackArrayCodec;
-import org.bukkit.inventory.ItemStack;
+import cn.mythicland.framework.bukkit.item.ItemStackArrayCodec;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.database.SqlDatabase;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,6 +13,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.UUID;
+
+import org.bukkit.inventory.ItemStack;
 
 /**
  * JDBC implementation of the DreamRPG player storage store.

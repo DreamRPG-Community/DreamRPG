@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpgitems.sync;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.component.InjectComponent;
 import io.lumine.xikage.mythicmobs.api.bukkit.events.MythicMobItemGenerateEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

@@ -60,6 +60,5 @@ public interface DreamRPGItemApi {
 
     MythicItemImportResult importItems(MythicItemImportRequest request);
 
-    MythicItemEditorCatalog editorCatalog();
 
 }

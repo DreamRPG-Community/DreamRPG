@@ -1,24 +1,24 @@
 package cn.mythicland.dreamrpgcombat.stats;
 
-import cn.mythicland.dreamrpgcombat.api.CombatApi;
+import cn.mythicland.dreamrpg.api.HealthSnapshot;
 import cn.mythicland.dreamrpgcombat.api.CombatStatsSnapshot;
 import cn.mythicland.dreamrpgcombat.config.CombatSettings;
 import cn.mythicland.dreamrpgcombat.lore.CombatItemStats;
 import cn.mythicland.dreamrpgcombat.lore.CombatLoreParser;
 import cn.mythicland.dreamrpgcombat.lore.CombatStat;
-import cn.mythicland.dreamrpg.api.HealthSnapshot;
-import cn.mythicland.dreamlib.item.ItemLoreReader;
-import cn.mythicland.dreamlib.item.NumericRange;
+import cn.mythicland.framework.bukkit.item.ItemLoreReader;
+import cn.mythicland.framework.bukkit.item.NumericRange;
+
+import java.util.*;
+import java.util.function.Function;
+
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.*;
-import java.util.function.Function;
-
-public final class CombatStatsService implements CombatApi {
+public final class CombatStatsService {
 
     private static final long INVALID_WARNING_COOLDOWN_MILLIS = 60_000L;
 
@@ -85,8 +85,14 @@ public final class CombatStatsService implements CombatApi {
         double critDamage = 0.0D;
         double experienceBonus = 0.0D;
         boolean hasDefense = false;
+        EnumMap<CombatStat, NumericRange> attributes = new EnumMap<>(CombatStat.class);
 
         for (CombatItemStats item : itemStats) {
+            item.values().forEach((stat, value) -> {
+                if (stat.extended()) attributes.merge(stat, value, (first, second) -> new NumericRange(
+                        first.minimum() + second.minimum(), first.maximum() + second.maximum(), first.percent()
+                ));
+            });
             NumericRange damage = item.value(CombatStat.DAMAGE).orElse(null);
             if (damage != null) {
                 damageMinimum += damage.minimum();
@@ -115,6 +121,17 @@ public final class CombatStatsService implements CombatApi {
                 .critChancePercent(Math.clamp(critChance, 0.0D, 100.0D))
                 .critDamagePercent(critDamage)
                 .experienceBonusPercent(experienceBonus);
+        attributes.forEach((stat, value) -> {
+            double minimum = stat == CombatStat.MOVEMENT_SPEED ? -100 : 0;
+            boolean bounded = stat == CombatStat.MOVEMENT_SPEED || stat == CombatStat.LIFESTEAL
+                    || stat == CombatStat.PHYSICAL_PENETRATION_PERCENT || stat == CombatStat.MAGIC_PENETRATION_PERCENT;
+            if (bounded) {
+                double effective = Math.clamp(value.average(), minimum, 100);
+                builder.attribute(stat, new NumericRange(effective, effective, value.percent()));
+            } else {
+                builder.attribute(stat, value);
+            }
+        });
         if (rpgHealth != null && rpgHealth.enabled()) {
             builder.baseHealth(rpgHealth.baseHealth())
                     .levelHealthBonus(rpgHealth.levelHealthBonus());
@@ -168,12 +185,10 @@ public final class CombatStatsService implements CombatApi {
         warningTimes.clear();
     }
 
-    @Override
     public CombatStatsSnapshot getStats(Player player) {
         return getStats((LivingEntity) Objects.requireNonNull(player, "player"));
     }
 
-    @Override
     public CombatStatsSnapshot getStats(LivingEntity entity) {
         Objects.requireNonNull(entity, "entity");
         boolean levelGateEnabled = rpgLevelResolver != null && entity instanceof Player;
@@ -192,11 +207,18 @@ public final class CombatStatsService implements CombatApi {
         return aggregate(itemStats, rpgHealth);
     }
 
-    @Override
     public CombatItemStats parseItem(ItemStack itemStack) {
         CombatItemStats stats = parser.parse(ItemLoreReader.read(itemStack));
         for (String invalidLine : stats.invalidLines()) warnInvalidLine(invalidLine);
         return stats;
+    }
+
+    public boolean hasInsufficientLevel(Player player, ItemStack item) {
+        if (rpgLevelResolver == null) return false;
+        CombatItemStats stats = parseItem(item);
+        if (!stats.hasRequiredLevel()) return false;
+        OptionalLong level = resolveRpgLevel(player);
+        return level.isPresent() && !usableAtLevel(stats, level.getAsLong());
     }
 
     public List<String> debug(Player player) {

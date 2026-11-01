@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpg.database;
 
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.database.SqlDatabase;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.database.SqlDatabase;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

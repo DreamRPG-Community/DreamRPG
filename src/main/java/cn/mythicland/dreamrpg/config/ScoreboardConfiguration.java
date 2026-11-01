@@ -1,16 +1,17 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.ConfigComponent;
-import cn.mythicland.dreamlib.config.ConfigView;
-import cn.mythicland.dreamlib.config.ConfigurableComponent;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
+import cn.mythicland.framework.bukkit.config.ConfigView;
+import cn.mythicland.framework.bukkit.config.ConfigurableComponent;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigComponent;
 
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
+
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Loads and binds DreamRPG's separately persisted scoreboard.yml file.

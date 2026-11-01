@@ -60,8 +60,12 @@ class CampaignCatalogTest {
         yaml.set("version", 1);
         assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parse(yaml));
         yaml.set("version", 2);
-        yaml.set("stages.origin.mobs", List.of("goblin"));
         assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parse(yaml));
+        for (String retired : List.of("name", "description", "mobs")) {
+            var invalid = stages();
+            invalid.set("stages.origin." + retired, "retired");
+            assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parse(invalid));
+        }
     }
 
     @Test
@@ -143,22 +147,22 @@ class CampaignCatalogTest {
     @Test
     void createsNpcTaskWithoutRequiringAnExistingStage() throws Exception {
         var yaml = new YamlConfiguration();
-        yaml.loadFromString("version: 2\nstages: {}\n");
+        yaml.loadFromString("version: 3\nstages: {}\n");
         ExchangeOffer offer = new ExchangeOffer("new_task", NPC,
                 List.of(new ItemAmount("origin_book", 1)), new ItemAmount("daily_life_book", 1));
         CampaignCatalog.changeYaml(yaml, null, offer, true, CampaignCatalog.NPC_TASK_STAGE);
         var loaded = new YamlConfiguration();
         loaded.loadFromString(yaml.saveToString());
         assertEquals(List.of(offer), CampaignCatalog.parse(loaded).getFirst().tasks());
+        assertEquals(java.util.Set.of("tasks"), loaded.getConfigurationSection("stages." + CampaignCatalog.NPC_TASK_STAGE).getKeys(false));
     }
 
     private static YamlConfiguration stages() throws Exception {
         var yaml = new YamlConfiguration();
         yaml.loadFromString("""
-                version: 2
+                version: 3
                 stages:
                   origin:
-                    name: 故事起源
                     tasks:
                       story_origin:
                         npc: 72a62f0f-a93a-3a40-a581-b05f345f94d1

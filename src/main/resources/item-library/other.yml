@@ -8,7 +8,7 @@ entries:
     item: main_village_material_key
   other_2:
     order: 502
-    item: rpg_bai_yu_kao_ji
+    item: main_village_material_roasted_chicken
   other_3:
     order: 503
-    item: rpg_ge_bu_lin_de_shou_gu
+    item: main_village_material_goblin_bone

@@ -9,12 +9,9 @@ import java.util.List;
  */
 public record CampaignStage(
         String id,
-        String name,
-        List<String> description,
         List<ExchangeOffer> tasks
 ) {
     public CampaignStage {
-        description = List.copyOf(description);
         tasks = List.copyOf(tasks);
     }
 }

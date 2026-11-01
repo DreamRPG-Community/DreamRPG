@@ -1,10 +1,17 @@
 package cn.mythicland.dreamrpg.compat;
 
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -13,12 +20,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.Plugin;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.logging.Level;
-
 /**
  * Disables ViaRewind's legacy-client attack cooldown visualization without linking DreamRPG to
  * ViaVersion classes at compile time.
@@ -26,7 +27,7 @@ import java.util.logging.Level;
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
-public final class ViaRewindCooldownDisabler implements DreamLibPluginLifecycle, Listener {
+public final class ViaRewindCooldownDisabler implements ManagedLifecycle, Listener {
 
     private static final String VIA_REWIND_PLUGIN = "ViaRewind";
     private static final String VIA_REWIND_CONFIG = "com.viaversion.viarewind.ViaRewind";
@@ -74,7 +75,7 @@ public final class ViaRewindCooldownDisabler implements DreamLibPluginLifecycle,
      * normal plugin startup and Via's delayed initialization path.
      */
     @Override
-    public void enable() {
+    public void load() {
         active = true;
         disableIndicator();
         tasks.runLater(1L, this::disableIndicator);
@@ -105,7 +106,7 @@ public final class ViaRewindCooldownDisabler implements DreamLibPluginLifecycle,
      * No Via resources are owned by DreamRPG.
      */
     @Override
-    public void disable() {
+    public void unload() {
         active = false;
     }
 

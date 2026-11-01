@@ -1,15 +1,16 @@
 package cn.mythicland.dreamrpgcombat.stats;
 
+import cn.mythicland.dreamrpg.api.HealthSnapshot;
 import cn.mythicland.dreamrpgcombat.api.CombatStatsSnapshot;
 import cn.mythicland.dreamrpgcombat.lore.CombatItemStats;
 import cn.mythicland.dreamrpgcombat.lore.CombatStat;
-import cn.mythicland.dreamrpg.api.HealthSnapshot;
-import cn.mythicland.dreamlib.item.NumericRange;
-import org.junit.jupiter.api.Test;
+import cn.mythicland.framework.bukkit.item.NumericRange;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

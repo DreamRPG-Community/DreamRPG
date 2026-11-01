@@ -1,15 +1,3 @@
-database:
-  mode: sqlite
-  sqlite:
-    file: profiles.db
-  mysql:
-    host: 127.0.0.1
-    port: 3306
-    database: dreamrpg
-    username: root
-    password: ''
-    use-ssl: false
-    server-timezone: Asia/Shanghai
 experience:
   max-level: -1
 health:
@@ -21,29 +9,34 @@ spawn:
   teleport-on-join: true
   teleport-on-respawn: true
 chat:
-  format: '%luckperms_prefix% {prefix} {name}&7: &f{message}'
+  format: '{member_prefix} {prefix} {name}&7: &f{message}'
   color-permission: dreamrpg.chat.color
 display:
   tab:
     header: []
     footer: []
-    player-name-format: '{prefix} {name}        '
-  name-tag-format: '{prefix} {name}'
+    player-name-format: '{member_prefix} {prefix} {name}        '
+  name-tag-format: '{member_prefix} {prefix} {name}'
 combat-feedback: false
 messages:
   critical-hit: '&c&l暴击! &f你造成了&c{damage}&f点伤害!'
   health-regen: '&a&l生命回复! &f你恢复了&c{amount}&f点生命值!'
 labels:
-  damage: 伤害
+  damage: 物理攻击
   defense: 防御
   health: 生命值
   health-regen: 生命回复
   crit-chance: 暴击几率
   crit-damage: 暴击伤害
   experience-bonus: 经验加成
+  magic-damage: 法术攻击
+  physical-defense: 物理防御
+  magic-defense: 法术防御
+  physical-penetration: 物理穿透
+  magic-penetration: 法术穿透
+  movement-speed: 移动速度
+  lifesteal: 嗜血
   level-requirement: 需要等级
-web:
-  enabled: false
-  bind-address: 127.0.0.1
-  port: 8765
-  token: ''
+
+combat:
+  defense-constant: 600.0

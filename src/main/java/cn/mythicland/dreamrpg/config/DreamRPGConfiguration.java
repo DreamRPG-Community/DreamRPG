@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.ConfigComponent;
-import cn.mythicland.dreamlib.config.ConfigView;
-import cn.mythicland.dreamlib.config.ConfigurableComponent;
+import cn.mythicland.framework.bukkit.config.ConfigView;
+import cn.mythicland.framework.bukkit.config.ConfigurableComponent;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigComponent;
 
 import java.util.Objects;
 

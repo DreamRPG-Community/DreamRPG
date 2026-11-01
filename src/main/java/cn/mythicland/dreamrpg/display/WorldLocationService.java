@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpg.display;
 
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
+import cn.mythicland.framework.component.InjectComponent;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;

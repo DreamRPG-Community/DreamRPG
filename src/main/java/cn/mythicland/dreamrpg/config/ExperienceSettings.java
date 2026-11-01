@@ -1,8 +1,8 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.dreamlib.config.ConfigSupport;
-import cn.mythicland.dreamlib.config.ConfigValue;
-import cn.mythicland.dreamlib.config.ConfigView;
+import cn.mythicland.framework.bukkit.config.ConfigSupport;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigProperty;
+import cn.mythicland.framework.bukkit.config.ConfigView;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.Objects;
@@ -66,23 +66,23 @@ public record ExperienceSettings(
     }
 
     private record RawSettings(
-            @ConfigValue(
+            @ConfigProperty(
                     path = "experience.max-level",
                     defaultValue = "-1"
             )
             long maxLevel,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "health.enabled",
                     defaultValue = "true"
             )
             boolean healthEnabled,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "health.base-health",
                     defaultValue = "20.0",
                     positive = true
             )
             double baseHealth,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "health.health-per-level",
                     defaultValue = "5.0",
                     nonNegative = true

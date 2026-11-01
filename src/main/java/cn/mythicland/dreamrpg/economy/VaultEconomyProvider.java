@@ -3,17 +3,8 @@ package cn.mythicland.dreamrpg.economy;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.CoinTransaction;
 import cn.mythicland.dreamrpg.api.InsufficientCoinsException;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.server.ServiceRegisterEvent;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.RegisteredServiceProvider;
-import org.bukkit.plugin.ServicePriority;
-import org.bukkit.plugin.java.JavaPlugin;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
@@ -26,6 +17,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.server.ServiceRegisterEvent;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicePriority;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Registers DreamRPG's coin ledger as Vault's Economy service without a compile-time Vault

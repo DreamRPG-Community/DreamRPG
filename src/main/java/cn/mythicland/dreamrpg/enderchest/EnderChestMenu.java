@@ -2,24 +2,25 @@ package cn.mythicland.dreamrpg.enderchest;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
-import cn.mythicland.dreamlib.container.ContainerAnimationHandle;
-import cn.mythicland.dreamlib.container.ContainerAnimationSpec;
-import cn.mythicland.dreamlib.menu.MenuService;
-import cn.mythicland.dreamlib.menu.StatefulMenuView;
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.container.ContainerAnimationHandle;
+import cn.mythicland.framework.bukkit.container.ContainerAnimationSpec;
+import cn.mythicland.framework.bukkit.menu.InventoryMenu;
+import cn.mythicland.framework.bukkit.menu.MenuManager;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+
+import java.util.Objects;
+import java.util.UUID;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Objects;
-import java.util.UUID;
-
 /**
  * Mutable one-page 54-slot custom ender-chest view.
  */
-final class EnderChestMenu implements StatefulMenuView {
+final class EnderChestMenu extends InventoryMenu {
 
     static final int SIZE = PlayerStorageSnapshot.ENDER_CHEST_SIZE;
     private static final String ENDER_CHEST_TITLE = "&8末影箱";
@@ -63,8 +64,12 @@ final class EnderChestMenu implements StatefulMenuView {
         this.animation = Objects.requireNonNull(animation, "animation");
     }
 
+    UUID ownerId() {
+        return uniqueId;
+    }
+
     @Override
-    public String title(Player player) {
+    public String buildTitle(Player player) {
         Objects.requireNonNull(player, "player");
         return LegacyText.colorize(ENDER_CHEST_TITLE);
     }
@@ -82,7 +87,7 @@ final class EnderChestMenu implements StatefulMenuView {
     }
 
     @Override
-    public void handleClick(Player player, InventoryClickEvent event, MenuService menuService) {
+    public void handleClick(Player player, InventoryClickEvent event, MenuManager menuService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(event, "event");
         Objects.requireNonNull(menuService, "menuService");
@@ -90,7 +95,7 @@ final class EnderChestMenu implements StatefulMenuView {
     }
 
     @Override
-    public void handleDrag(Player player, InventoryDragEvent event, MenuService menuService) {
+    public void handleDrag(Player player, InventoryDragEvent event, MenuManager menuService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(event, "event");
         Objects.requireNonNull(menuService, "menuService");

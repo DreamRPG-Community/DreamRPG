@@ -1,7 +1,7 @@
 package cn.mythicland.dreamrpg.experience;
 
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.api.ExperienceApi;
 import cn.mythicland.dreamrpg.config.ExperienceConfiguration;

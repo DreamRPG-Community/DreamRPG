@@ -1,18 +1,17 @@
 package cn.mythicland.dreamrpg.experience;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.api.*;
 import cn.mythicland.dreamrpg.config.ExperienceConfiguration;
 import cn.mythicland.dreamrpg.config.ExperienceSettings;
 import cn.mythicland.dreamrpg.database.ExperienceStore;
 import cn.mythicland.dreamrpg.event.RpgLevelUpEvent;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
-import cn.mythicland.dreamlib.storage.VersionedPlayerSession;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
+import cn.mythicland.dreamrpg.event.RpgLevelChangedEvent;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.storage.VersionedPlayerSession;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,6 +25,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 /**
  * DreamRPG's authoritative experience ledger and vanilla-bar presentation adapter.
@@ -79,7 +82,7 @@ public final class ExperienceService implements ExperienceApi {
     }
 
     private static void ensurePrimaryThread() {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("DreamRPG experience requires the main thread");
+        MainThread.require("DreamRPG experience requires the main thread");
     }
 
     private static BigDecimal activeMultiplier(TimedMultiplier timed) {
@@ -328,6 +331,61 @@ public final class ExperienceService implements ExperienceApi {
         VersionedPlayerSession<ExperienceState> session = sessions.get(uniqueId);
         if (session == null) return ExperienceSnapshot.notReady(uniqueId);
         return snapshot(session.snapshot(), isReady(uniqueId));
+    }
+
+    /**
+     * Sets the player's level and updates persisted progress and dependent RPG attributes.
+     */
+    @Override
+    public ExperienceSnapshot setLevel(UUID uniqueId, long level) {
+        ensurePrimaryThread();
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        if (level < 0L) throw new IllegalArgumentException("level cannot be negative");
+        long maximum = configuration.snapshot().maxLevel();
+        if (maximum >= 0L && level > maximum) {
+            throw new IllegalArgumentException("level exceeds the configured maximum: " + maximum);
+        }
+        VersionedPlayerSession<ExperienceState> session = requireReadySession(uniqueId);
+        ExperienceState previous = session.snapshot();
+        BigDecimal experience = maximum >= 0L && level == maximum
+                ? BigDecimal.valueOf(ExperienceCurve.requiredForNextLevel(level))
+                : ZERO;
+        ExperienceState current = previous.withProgress(level, experience);
+        session.replace(current);
+        syncOnlinePlayer(uniqueId);
+        if (previous.level() != level) {
+            Bukkit.getPluginManager().callEvent(new RpgLevelChangedEvent(
+                    uniqueId, previous.level(), level, "admin", "set-level"
+            ));
+        }
+        return snapshot(current, true);
+    }
+
+    /**
+     * Sets current-level experience through the standard level curve.
+     */
+    @Override
+    public ExperienceSnapshot setExperience(UUID uniqueId, BigDecimal amount) {
+        ensurePrimaryThread();
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        BigDecimal target = ExperienceCalculator.normalize(Objects.requireNonNull(amount, "amount"));
+        if (target.signum() < 0) throw new IllegalArgumentException("experience cannot be negative");
+        VersionedPlayerSession<ExperienceState> session = requireReadySession(uniqueId);
+        ExperienceState previous = session.snapshot();
+        ExperienceCalculator.Calculation calculation = ExperienceCalculator.apply(
+                previous.level(), BigDecimal.ZERO, target, configuration.snapshot().maxLevel()
+        );
+        ExperienceState current = previous.withProgress(
+                calculation.level(), calculation.currentExperience()
+        );
+        session.replace(current);
+        syncOnlinePlayer(uniqueId);
+        if (previous.level() != current.level()) {
+            Bukkit.getPluginManager().callEvent(new RpgLevelChangedEvent(
+                    uniqueId, previous.level(), current.level(), "admin", "set-experience"
+            ));
+        }
+        return snapshot(current, true);
     }
 
     /**
@@ -635,6 +693,19 @@ public final class ExperienceService implements ExperienceApi {
     private boolean isCapped(ExperienceState state) {
         long cap = configuration.snapshot().maxLevel();
         return cap >= 0L && state.level() >= cap;
+    }
+
+    private VersionedPlayerSession<ExperienceState> requireReadySession(UUID uniqueId) {
+        VersionedPlayerSession<ExperienceState> session = sessions.get(uniqueId);
+        if (session == null || !isReady(uniqueId)) {
+            throw new IllegalStateException("DreamRPG experience data is not ready: " + uniqueId);
+        }
+        return session;
+    }
+
+    private void syncOnlinePlayer(UUID uniqueId) {
+        Player player = Bukkit.getPlayer(uniqueId);
+        if (player != null && player.isOnline()) syncPresentation(player);
     }
 
     private void removeSaveChain(UUID uniqueId, CompletableFuture<Void> chain) {

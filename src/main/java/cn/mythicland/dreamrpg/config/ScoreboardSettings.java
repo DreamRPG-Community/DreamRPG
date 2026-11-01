@@ -1,16 +1,17 @@
 package cn.mythicland.dreamrpg.config;
 
-import cn.mythicland.dreamlib.config.ConfigSupport;
-import cn.mythicland.dreamlib.config.ConfigValue;
-import cn.mythicland.dreamlib.text.TemplateRenderer;
-import cn.mythicland.dreamlib.text.TextAnimation;
-import org.bukkit.configuration.file.FileConfiguration;
+import cn.mythicland.framework.bukkit.config.ConfigSupport;
+import cn.mythicland.framework.bukkit.config.annotation.ConfigProperty;
+import cn.mythicland.framework.bukkit.text.TemplateRenderer;
+import cn.mythicland.framework.text.TextAnimation;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+
+import org.bukkit.configuration.file.FileConfiguration;
 
 /**
  * Immutable settings loaded from the standalone scoreboard.yml file.
@@ -179,48 +180,48 @@ public record ScoreboardSettings(
     }
 
     private record RawSettings(
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.enabled",
                     defaultValue = "true"
             )
             boolean enabled,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.title-animation",
                     defaultValue = "",
                     trim = false
             )
             List<String> titleEntries,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.update-ticks",
                     defaultValue = "20",
                     positive = true
             )
             long updateTicks,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.title-update-ticks",
                     defaultValue = "1",
                     positive = true
             )
             long titleUpdateTicks,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.lines",
                     defaultValue = "",
                     trim = false
             )
             List<String> lines,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "normal.time-zone",
                     defaultValue = "Asia/Shanghai",
                     nonBlank = true
             )
             String timeZone,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "loading.title-animation",
                     defaultValue = "",
                     trim = false
             )
             List<String> loadingTitleEntries,
-            @ConfigValue(
+            @ConfigProperty(
                     path = "loading.lines",
                     defaultValue = "",
                     trim = false

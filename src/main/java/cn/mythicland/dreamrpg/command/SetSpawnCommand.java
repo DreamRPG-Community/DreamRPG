@@ -1,21 +1,22 @@
 package cn.mythicland.dreamrpg.command;
 
-import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.CommandHandler;
-import cn.mythicland.dreamlib.command.CommandContext;
-import cn.mythicland.dreamlib.command.VanillaCommandMessages;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
+import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
+import cn.mythicland.framework.bukkit.command.CommandBinding;
+import cn.mythicland.framework.bukkit.command.CommandContext;
+import cn.mythicland.framework.bukkit.command.CommandRoute;
+import cn.mythicland.framework.bukkit.command.VanillaCommandMessages;
 
 import java.util.Locale;
 import java.util.Objects;
 
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+
 /**
  * Saves the executing administrator's snapped location as the DreamRPG main spawn.
  */
-@CommandComponent(
+@CommandBinding(
         value = "setspawn",
         permission = "dreamrpg.admin",
         takeOverGlobalMapping = true
@@ -43,7 +44,7 @@ public final class SetSpawnCommand {
         );
     }
 
-    @CommandHandler
+    @CommandRoute(path = {"setspawn"}, maxArguments = Integer.MAX_VALUE)
     void setSpawn(CommandContext commandContext) {
         commandContext.requireArguments(0);
         if (!(commandContext.sender() instanceof Player player)) {

@@ -7,7 +7,7 @@ import java.util.UUID;
  * DreamRPG's authoritative coin ledger contract.
  *
  * <p>Vault is only an interoperability adapter around this service. Game systems should use this
- * contract so the SQLite/MySQL storage choice and transaction rules remain inside DreamRPG.</p>
+ * contract so the SQLite/PostgreSQL storage choice and transaction rules remain inside DreamRPG.</p>
  */
 public interface CoinService {
 
@@ -18,6 +18,15 @@ public interface CoinService {
      * @return non-negative balance with two decimal places
      */
     BigDecimal balance(UUID uniqueId);
+
+    /**
+     * Sets a player's balance atomically.
+     *
+     * @param uniqueId player UUID
+     * @param amount   new non-negative balance with at most two decimal places
+     * @return resulting balance
+     */
+    BigDecimal setBalance(UUID uniqueId, BigDecimal amount);
 
     /**
      * Tests whether the player can spend the requested positive amount.

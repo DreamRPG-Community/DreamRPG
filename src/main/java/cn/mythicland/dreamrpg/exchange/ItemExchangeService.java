@@ -1,18 +1,16 @@
 package cn.mythicland.dreamrpg.exchange;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamnpc.api.DreamNPCApi;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.campaign.CampaignCatalog;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.item.InventoryExchange;
-import cn.mythicland.dreamlib.menu.MenuItems;
-import cn.mythicland.dreamlib.text.LegacyText;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
+import cn.mythicland.framework.bukkit.MainThread;
+import cn.mythicland.framework.bukkit.item.InventoryExchange;
+import cn.mythicland.framework.bukkit.menu.MenuItems;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,11 +20,15 @@ import java.util.function.BiPredicate;
 import java.util.logging.Level;
 import java.util.stream.Stream;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
 /**
  * Item-only task and shop exchanges, committed through the existing player storage session.
  */
 @InjectComponent
-public final class ItemExchangeService implements DreamLibPluginLifecycle {
+public final class ItemExchangeService implements ManagedLifecycle {
     private final DreamRPGPlugin plugin;
     private final CampaignCatalog catalog;
     private final PlayerStorageService storage;
@@ -47,7 +49,7 @@ public final class ItemExchangeService implements DreamLibPluginLifecycle {
     }
 
     @Override
-    public void enable() {
+    public void load() {
         enabled = true;
     }
 
@@ -57,7 +59,7 @@ public final class ItemExchangeService implements DreamLibPluginLifecycle {
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         enabled = false;
         for (Player player : pending) lib.playerLoadingGate().cancel(player);
         pending.clear();
@@ -102,7 +104,7 @@ public final class ItemExchangeService implements DreamLibPluginLifecycle {
      * Rechecks the current configuration, session readiness, item identities and reward capacity.
      */
     public void submit(Player player, ExchangeOffer rendered, boolean bulk) {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Item exchanges require the primary thread");
+        MainThread.require("Item exchanges require the primary thread");
         if (!enabled || !storage.isReady(player.getUniqueId()) || lib.playerLoadingGate().isRestricted(player)) return;
         if (catalog.find(rendered.id()).orElse(null) != rendered) {
             player.sendMessage("§e任务或兑换配置已更新, 请查看刷新后的内容再提交。");

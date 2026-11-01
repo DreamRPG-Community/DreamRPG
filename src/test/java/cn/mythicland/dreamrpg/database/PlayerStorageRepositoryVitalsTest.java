@@ -2,9 +2,8 @@ package cn.mythicland.dreamrpg.database;
 
 import cn.mythicland.dreamrpg.api.PlayerStorageSnapshot;
 import cn.mythicland.dreamrpg.api.PlayerVitals;
-import cn.mythicland.dreamlib.database.SqlDatabase;
-import cn.mythicland.dreamlib.database.SqlWork;
-import org.junit.jupiter.api.Test;
+import cn.mythicland.framework.database.SqlDatabase;
+import cn.mythicland.framework.database.SqlWork;
 
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +11,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 

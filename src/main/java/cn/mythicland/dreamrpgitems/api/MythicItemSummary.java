@@ -6,8 +6,8 @@ import java.util.List;
  * Immutable summary of one loaded or diagnosed MythicMobs item.
  *
  * @param internalName MM internal identifier
- * @param relativeFile source file relative to MythicMobs/Items
- * @param managed      whether the entry is in DreamRPG item service's MM item file
+ * @param relativeFile editable source file relative to content
+ * @param managed      whether the entry is owned by the content workspace
  * @param status       runtime status
  * @param displayName  resolved display name
  * @param materialName resolved material name

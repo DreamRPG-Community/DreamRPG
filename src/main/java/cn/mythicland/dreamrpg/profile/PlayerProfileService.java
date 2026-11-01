@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpg.profile;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.api.CareerDefinition;
 import cn.mythicland.dreamrpg.api.DreamRPGApi;
 import cn.mythicland.dreamrpg.api.PlayerPresentation;
@@ -9,17 +10,17 @@ import cn.mythicland.dreamrpg.config.CareerCatalog;
 import cn.mythicland.dreamrpg.database.PlayerProfileStore;
 import cn.mythicland.dreamrpg.event.CareerChangedEvent;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ServiceComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
+import cn.mythicland.framework.bukkit.component.ServiceComponent;
+import cn.mythicland.framework.component.InjectComponent;
 
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 /**
  * Owns the cached player profile boundary and future internal career writes.
@@ -152,29 +153,34 @@ public final class PlayerProfileService implements DreamRPGApi {
     }
 
     /**
-     * Changes a career after validating and persisting it. This method is intentionally internal
-     * to DreamRPG; it is not part of the registered read-only API.
+     * Changes a career after validating and persisting it, then publishes the career-change event.
      *
      * @param uniqueId player UUID
      * @param careerId target career ID
      * @return future completed after the Bukkit event is published
      */
-    CompletableFuture<PlayerProfile> changeCareer(UUID uniqueId, String careerId) {
+    @Override
+    public CompletableFuture<PlayerProfile> changeCareer(UUID uniqueId, String careerId) {
         Objects.requireNonNull(uniqueId, "uniqueId");
         CareerDefinition targetCareer = careerCatalog.require(careerId);
-        return loadProfile(uniqueId).thenCompose(previousProfile -> lib.supplyAsync(() -> {
-            try {
-                repository.updateCareer(uniqueId, targetCareer.id());
-                return new PlayerProfile(uniqueId, targetCareer.id(), targetCareer);
-            } catch (SQLException exception) {
-                throw new IllegalStateException("Failed to update DreamRPG career: " + uniqueId, exception);
+        return loadProfile(uniqueId).thenCompose(previousProfile -> {
+            if (previousProfile.careerId().equals(targetCareer.id())) {
+                return CompletableFuture.completedFuture(previousProfile);
             }
-        }).thenCompose(currentProfile -> lib.supplyOnMain(() -> {
-            profiles.put(uniqueId, currentProfile);
-            loadedProfiles.add(uniqueId);
-            Bukkit.getPluginManager().callEvent(new CareerChangedEvent(previousProfile, currentProfile));
-            return currentProfile;
-        })));
+            return lib.supplyAsync(() -> {
+                try {
+                    repository.updateCareer(uniqueId, targetCareer.id());
+                    return new PlayerProfile(uniqueId, targetCareer.id(), targetCareer);
+                } catch (SQLException exception) {
+                    throw new IllegalStateException("Failed to update DreamRPG career: " + uniqueId, exception);
+                }
+            }).thenCompose(currentProfile -> lib.supplyOnMain(() -> {
+                profiles.put(uniqueId, currentProfile);
+                loadedProfiles.add(uniqueId);
+                Bukkit.getPluginManager().callEvent(new CareerChangedEvent(previousProfile, currentProfile));
+                return currentProfile;
+            }));
+        });
     }
 
     /**

@@ -1,30 +1,15 @@
 package cn.mythicland.dreamrpg.campaign;
 
 import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.menu.MenuItems;
-import cn.mythicland.dreamlib.text.LegacyText;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
 import cn.mythicland.dreamrpg.exchange.ItemAmount;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.menu.MenuItems;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,8 +20,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * Native-inventory editor for one exchange.
@@ -44,7 +45,7 @@ import java.util.function.Consumer;
 @InjectComponent
 @LifecycleComponent
 @ListenerComponent
-public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
+public final class ExchangeEditor implements ManagedLifecycle, Listener {
     private static final int BACK_SLOT = 45;
     private static final int REWARD_SLOT = 49;
     private static final int SAVE_SLOT = 53;
@@ -60,7 +61,7 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
     }
 
     @Override
-    public void enable() {
+    public void load() {
     }
 
     @Override
@@ -190,7 +191,7 @@ public final class ExchangeEditor implements DreamLibPluginLifecycle, Listener {
     }
 
     @Override
-    public void disable() {
+    public void unload() {
         closeEditors();
     }
 

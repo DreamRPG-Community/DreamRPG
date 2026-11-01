@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpgitems.api;
 
+import cn.mythicland.framework.validation.TextValidation;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
@@ -51,7 +52,7 @@ public final class MythicItemsChangedEvent extends Event {
     private static Set<String> immutableSet(Collection<String> values, String fieldName) {
         Objects.requireNonNull(values, fieldName);
         Set<String> copy = new LinkedHashSet<>();
-        for (String value : values) copy.add(requireText(value, fieldName));
+        for (String value : values) copy.add(TextValidation.requireText(value, fieldName));
         return Collections.unmodifiableSet(copy);
     }
 
@@ -59,17 +60,11 @@ public final class MythicItemsChangedEvent extends Event {
         Objects.requireNonNull(values, fieldName);
         Map<String, String> copy = new LinkedHashMap<>();
         values.forEach((key, value) -> {
-            String normalizedKey = requireText(key, fieldName + " key");
-            String normalizedValue = requireText(value, fieldName + " value");
+            String normalizedKey = TextValidation.requireText(key, fieldName + " key");
+            String normalizedValue = TextValidation.requireText(value, fieldName + " value");
             copy.put(normalizedKey, normalizedValue);
         });
         return Collections.unmodifiableMap(copy);
-    }
-
-    private static String requireText(String value, String fieldName) {
-        String text = Objects.requireNonNull(value, fieldName).trim();
-        if (text.isBlank()) throw new IllegalArgumentException(fieldName + " cannot be blank");
-        return text;
     }
 
     /**

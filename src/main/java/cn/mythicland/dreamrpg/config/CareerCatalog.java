@@ -4,6 +4,7 @@ import cn.mythicland.dreamrpg.api.CareerDefinition;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import cn.mythicland.framework.bukkit.content.ContentWorkspace;
 
 import java.io.File;
 import java.util.*;
@@ -29,8 +30,8 @@ public final class CareerCatalog {
      */
     public static CareerCatalog load(JavaPlugin plugin) {
         Objects.requireNonNull(plugin, "plugin");
-        File file = new File(plugin.getDataFolder(), "careers.yml");
-        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+        var file = cn.mythicland.dreamlib.api.DreamLibApi.contentFor(plugin).resource(plugin, "careers.yml", "careers.yml");
+        YamlConfiguration configuration = ContentWorkspace.readYaml(file);
         ConfigurationSection section = configuration.getConfigurationSection("careers");
         if (section == null) throw new IllegalStateException("careers.yml is missing the careers section");
 

@@ -3,12 +3,17 @@ package cn.mythicland.dreamrpgcombat.api;
 import cn.mythicland.dreamrpgcombat.lore.CombatStat;
 
 import java.util.Objects;
+import java.util.Map;
+import java.util.EnumMap;
+
+import cn.mythicland.framework.bukkit.item.NumericRange;
 
 /**
  * Immutable effective Combat attributes for one living entity.
  */
 public final class CombatStatsSnapshot {
 
+    private final Map<CombatStat, NumericRange> attributes;
     private final double damageMinimum;
     private final double damageMaximum;
     private final boolean hasDamage;
@@ -41,6 +46,7 @@ public final class CombatStatsSnapshot {
         validateFinite(builder.critDamagePercent, "critDamagePercent");
         validateFinite(builder.experienceBonusPercent, "experienceBonusPercent");
 
+        attributes = Map.copyOf(builder.attributes);
         damageMinimum = builder.damageMinimum;
         damageMaximum = builder.damageMaximum;
         hasDamage = builder.hasDamage;
@@ -57,7 +63,7 @@ public final class CombatStatsSnapshot {
 
     /**
      * Creates a builder with safe defaults. Critical damage is stored as a bonus above the
-     * base 100% multiplier, so the default bonus is 0% and the effective multiplier is 1.0x.
+     * base 150% multiplier, so the default bonus is 0% and a critical hit deals 1.5x damage.
      *
      * @return a new snapshot builder
      */
@@ -66,7 +72,7 @@ public final class CombatStatsSnapshot {
     }
 
     /**
-     * Returns an empty snapshot that leaves vanilla combat untouched.
+     * Returns a snapshot without equipment bonuses. The listener supplies the RPG base attack.
      *
      * @return an empty snapshot
      */
@@ -85,6 +91,21 @@ public final class CombatStatsSnapshot {
                     name + " must be between " + minimum + " and " + maximum
             );
         }
+    }
+
+    /**
+     * Returns a typed attribute, preserving its numeric range and percentage unit.
+     */
+    public NumericRange attribute(CombatStat stat) {
+        return attributes.getOrDefault(Objects.requireNonNull(stat, "stat"),
+                new NumericRange(0, 0, stat.percentageAttribute()));
+    }
+
+    /**
+     * Returns whether equipment explicitly supplies a typed attribute.
+     */
+    public boolean hasAttribute(CombatStat stat) {
+        return attributes.containsKey(Objects.requireNonNull(stat, "stat"));
     }
 
     public double damageMinimum() {
@@ -148,7 +169,7 @@ public final class CombatStatsSnapshot {
     }
 
     /**
-     * Returns the extra critical-damage percentage, excluding the base 100% damage.
+     * Returns the extra critical-damage percentage, excluding the base 150% critical multiplier.
      *
      * @return the extra critical-damage percentage
      */
@@ -180,6 +201,7 @@ public final class CombatStatsSnapshot {
             case CRIT_CHANCE -> critChancePercent;
             case CRIT_DAMAGE -> critDamagePercent;
             case EXPERIENCE_BONUS -> experienceBonusPercent;
+            default -> attribute(stat).average();
         };
     }
 
@@ -189,6 +211,7 @@ public final class CombatStatsSnapshot {
         if (!(other instanceof CombatStatsSnapshot snapshot)) return false;
         return Double.compare(damageMinimum, snapshot.damageMinimum) == 0
                 && Double.compare(damageMaximum, snapshot.damageMaximum) == 0
+                && attributes.equals(snapshot.attributes)
                 && hasDamage == snapshot.hasDamage
                 && Double.compare(defensePercent, snapshot.defensePercent) == 0
                 && hasDefense == snapshot.hasDefense
@@ -204,6 +227,7 @@ public final class CombatStatsSnapshot {
     @Override
     public int hashCode() {
         return Objects.hash(
+                attributes,
                 damageMinimum,
                 damageMaximum,
                 hasDamage,
@@ -222,7 +246,8 @@ public final class CombatStatsSnapshot {
     @Override
     public String toString() {
         return "CombatStatsSnapshot["
-                + "damageMinimum=" + damageMinimum
+                + "attributes=" + attributes
+                + ", damageMinimum=" + damageMinimum
                 + ", damageMaximum=" + damageMaximum
                 + ", hasDamage=" + hasDamage
                 + ", defensePercent=" + defensePercent
@@ -242,6 +267,7 @@ public final class CombatStatsSnapshot {
      */
     public static final class Builder {
 
+        private final EnumMap<CombatStat, NumericRange> attributes = new EnumMap<>(CombatStat.class);
         private double damageMinimum;
         private double damageMaximum;
         private boolean hasDamage;
@@ -315,6 +341,19 @@ public final class CombatStatsSnapshot {
 
         public Builder experienceBonusPercent(double value) {
             experienceBonusPercent = value;
+            return this;
+        }
+
+        /**
+         * Adds one typed attribute; legacy attributes use their existing builder methods.
+         */
+        public Builder attribute(CombatStat stat, NumericRange value) {
+            Objects.requireNonNull(stat, "stat");
+            Objects.requireNonNull(value, "value");
+            if (!stat.extended() || stat.percentageAttribute() != value.percent()) {
+                throw new IllegalArgumentException("Invalid typed attribute unit: " + stat);
+            }
+            attributes.put(stat, value);
             return this;
         }
 

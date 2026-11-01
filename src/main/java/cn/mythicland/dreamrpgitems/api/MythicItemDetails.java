@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpgitems.api;
 
-import cn.mythicland.dreamlib.storage.YamlTree;
+import cn.mythicland.framework.bukkit.storage.YamlTree;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;

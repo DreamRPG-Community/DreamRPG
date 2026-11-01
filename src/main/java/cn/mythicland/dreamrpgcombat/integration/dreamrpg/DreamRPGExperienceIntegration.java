@@ -7,6 +7,7 @@ import cn.mythicland.dreamrpgcombat.stats.CombatStatsService;
 import cn.mythicland.dreamrpg.api.*;
 import cn.mythicland.dreamrpg.event.PlayerDataReadyEvent;
 import cn.mythicland.dreamrpg.event.RpgLevelUpEvent;
+import cn.mythicland.dreamrpg.event.RpgLevelChangedEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -118,6 +119,11 @@ public final class DreamRPGExperienceIntegration implements Listener, AutoClosea
 
     @EventHandler
     public void onRpgLevelUp(RpgLevelUpEvent event) {
+        refresh(event.uniqueId());
+    }
+
+    @EventHandler
+    public void onRpgLevelChanged(RpgLevelChangedEvent event) {
         refresh(event.uniqueId());
     }
 

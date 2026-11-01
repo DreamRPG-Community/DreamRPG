@@ -153,12 +153,6 @@ def plan(root, release):
 
 def migrate(root, release, apply=False):
     root, release = root.resolve(), release.resolve()
-    marker = root / '.dreamrpg-suite-v1.json'
-    if marker.exists():
-        state = json.loads(marker.read_text(encoding='utf8'))
-        if state['version'] != VERSION:
-            raise ValueError('Unknown suite migration version')
-        return {'already_migrated': True, **state}
     writes, deletes, moves, report = plan(root, release)
     for target in list(writes) + deletes + [p for pair in moves for p in pair]:
         if not target.resolve().is_relative_to(root):
@@ -190,7 +184,7 @@ def migrate(root, release, apply=False):
             directory = root / 'plugins' / old
             if directory.exists():
                 # All retained domain resources have already been merged; keep original bytes in
-                # memory until the migration marker commits, never touching claims or profiles.
+                # memory until the migration completes, never touching claims or profiles.
                 obsolete_dirs.append((directory, {p.relative_to(directory): p.read_bytes() for p in directory.rglob('*') if p.is_file()}))
                 shutil.rmtree(directory)
         for relative, expected in db_hashes.items():
@@ -198,7 +192,6 @@ def migrate(root, release, apply=False):
             if digest(current) != expected:
                 raise ValueError('Player database changed during suite migration: ' + relative)
         report['database_hashes_before_migration'] = db_hashes
-        marker.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf8')
     except BaseException:
         for directory, files in obsolete_dirs:
             for relative, content in files.items():
@@ -213,7 +206,6 @@ def migrate(root, release, apply=False):
                 path.write_bytes(content)
         for source, target in reversed(completed_moves):
             target.rename(source)
-        marker.unlink(missing_ok=True)
         raise
     return report
 

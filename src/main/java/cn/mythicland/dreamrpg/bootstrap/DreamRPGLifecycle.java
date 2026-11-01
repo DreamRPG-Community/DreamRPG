@@ -1,25 +1,28 @@
 package cn.mythicland.dreamrpg.bootstrap;
 
+import cn.mythicland.framework.bukkit.content.ContentUpdate;
+import cn.mythicland.dreamrpg.config.CareerCatalog;
 import cn.mythicland.dreamrpg.display.DreamRPGDisplayService;
 import cn.mythicland.dreamrpg.enderchest.EnderChestService;
 import cn.mythicland.dreamrpg.experience.ExperienceService;
 import cn.mythicland.dreamrpg.health.HealthProgressionService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
-import cn.mythicland.dreamrpg.storage.PlayerStorageService;
 import cn.mythicland.dreamrpg.starter.FirstJoinRewardService;
-import cn.mythicland.dreamlib.bootstrap.DreamLibPluginLifecycle;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.LifecycleComponent;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
+import cn.mythicland.dreamrpg.storage.PlayerStorageService;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.component.LifecycleComponent;
+import cn.mythicland.framework.component.ManagedLifecycle;
 
 import java.util.Objects;
+
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 /**
  * Owns the mutable DreamRPG lifecycle after Lib has injected every component.
  */
 @LifecycleComponent
-public final class DreamRPGLifecycle implements DreamLibPluginLifecycle {
+public final class DreamRPGLifecycle implements ManagedLifecycle {
 
     private final JavaPlugin plugin;
     private final PluginTaskScope tasks;
@@ -81,7 +84,7 @@ public final class DreamRPGLifecycle implements DreamLibPluginLifecycle {
      * Starts the scoreboard refresh loop and initial display state.
      */
     @Override
-    public void enable() {
+    public void load() {
         firstJoinRewards.start();
         experience.start();
         storage.start();
@@ -104,11 +107,29 @@ public final class DreamRPGLifecycle implements DreamLibPluginLifecycle {
         plugin.getLogger().info("DreamRPG configuration reloaded; runtime libraries remain unchanged.");
     }
 
+    /** Reloads editable career definitions while keeping database and display settings intact. */
+    public void reloadContent() {
+        prepareContentReload().apply().run();
+    }
+
+    /** @return validated career definitions and the inverse profile catalog update */
+    public ContentUpdate prepareContentReload() {
+        var previous = context.careerCatalog();
+        var next = CareerCatalog.load(plugin);
+        return new ContentUpdate(() -> {
+            context.replaceCareerCatalog(next);
+            profiles.reloadCatalog(next);
+        }, () -> {
+            context.replaceCareerCatalog(previous);
+            profiles.reloadCatalog(previous);
+        });
+    }
+
     /**
      * Cancels tasks, closes display sessions, clears profiles, and closes the configured database.
      */
     @Override
-    public void disable() {
+    public void unload() {
         tasks.cancel(scoreboardTask);
         tasks.cancel(titleTask);
         scoreboardTask = null;

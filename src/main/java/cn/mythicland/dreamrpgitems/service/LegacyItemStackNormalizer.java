@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpgitems.service;
 
-import cn.mythicland.dreamlib.storage.YamlTree;
+import cn.mythicland.framework.bukkit.storage.YamlTree;
 
 import java.util.*;
 import java.util.function.UnaryOperator;

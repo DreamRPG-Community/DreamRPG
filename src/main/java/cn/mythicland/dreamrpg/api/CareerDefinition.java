@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpg.api;
 
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.text.LegacyText;
 
 import java.util.Locale;
 import java.util.Objects;

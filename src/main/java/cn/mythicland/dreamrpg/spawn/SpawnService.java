@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpg.spawn;
 
+import cn.mythicland.framework.bukkit.MainThread;
 import cn.mythicland.dreamrpg.config.DreamRPGSettings;
 import org.bukkit.Bukkit;
 import cn.mythicland.dreamworld.api.DreamWorldApi;
@@ -56,13 +57,27 @@ public final class SpawnService {
     }
 
     /**
+     * Resolves a world's configured DreamWorld spawn, or its native spawn when none is configured.
+     * Must be called on the server thread while DreamWorld is available.
+     *
+     * @param world the world where the player died
+     * @return a fresh location in that world
+     */
+    public Location location(World world) {
+        return worlds.findLogicalName(world)
+                .flatMap(worlds::findSpawn)
+                .map(spawn -> spawn.toLocation(world))
+                .orElseGet(world::getSpawnLocation);
+    }
+
+    /**
      * Teleports a player synchronously.
      *
      * @param player player to teleport
      * @return Bukkit teleport result
      */
     public boolean teleport(Player player) {
-        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Spawn teleport must run on the main thread");
+        MainThread.require("Spawn teleport must run on the main thread");
         return Objects.requireNonNull(player, "player").teleport(location());
     }
 

@@ -1,6 +1,6 @@
 package cn.mythicland.dreamrpgcombat.lore;
 
-import cn.mythicland.dreamlib.item.NumericRange;
+import cn.mythicland.framework.bukkit.item.NumericRange;
 
 import java.util.*;
 

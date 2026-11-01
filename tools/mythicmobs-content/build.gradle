@@ -1,0 +1,29 @@
+plugins { id "java" }
+
+repositories { mavenCentral() }
+java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
+def mythicInput = providers.gradleProperty("mythicInput")
+dependencies {
+    implementation "org.ow2.asm:asm:9.9.1"
+    compileOnly files("../../../../../cache/patched_1.12.2.jar")
+    compileOnly files(mythicInput)
+    compileOnly("cn.mythicland:mythic-framework-bukkit:1.0.0") { transitive = false }
+}
+tasks.withType(JavaCompile).configureEach {
+    classpath = files(configurations.compileClasspath.filter { it.name.startsWith("asm-") }) + files(configurations.compileClasspath.filter { !it.name.startsWith("asm-") })
+    options.encoding = "UTF-8"
+    options.release = 21
+    options.compilerArgs.addAll(["-Xlint:all", "-proc:none"])
+}
+tasks.register("patchMythic", JavaExec) {
+    dependsOn classes
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "cn.mythicland.mythicmobs.content.PatchMythic"
+    inputs.file(mythicInput)
+    outputs.file(layout.buildDirectory.file("libs/MythicMobs.jar"))
+    doFirst {
+        args = [mythicInput.get(), layout.buildDirectory.file("libs/MythicMobs.jar").get().asFile.absolutePath,
+                layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath]
+    }
+}
+tasks.named("assemble") { dependsOn "patchMythic" }

@@ -1,5 +1,6 @@
 package cn.mythicland.dreamrpg.listener;
 
+import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.display.DreamRPGDisplayService;
 import cn.mythicland.dreamrpg.event.CareerChangedEvent;
@@ -8,25 +9,26 @@ import cn.mythicland.dreamrpg.experience.ExperienceService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.spawn.SpawnService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
-import cn.mythicland.dreamlib.api.DreamLibApi;
-import cn.mythicland.dreamlib.bootstrap.PluginTaskScope;
-import cn.mythicland.dreamlib.bootstrap.annotation.InjectComponent;
-import cn.mythicland.dreamlib.bootstrap.annotation.ListenerComponent;
-import cn.mythicland.dreamlib.loading.PlayerLoadingGate;
-import cn.mythicland.dreamlib.text.LegacyText;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
+import cn.mythicland.framework.bukkit.player.PlayerLoadingGate;
+import cn.mythicland.framework.bukkit.task.PluginTaskScope;
+import cn.mythicland.framework.bukkit.text.LegacyText;
+import cn.mythicland.framework.component.InjectComponent;
+
+import java.util.Objects;
+import java.util.UUID;
+import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.Objects;
-import java.util.UUID;
-import java.util.logging.Level;
 
 /**
  * Connects Bukkit player lifecycle events to DreamRPG's profile, spawn, and display services.
@@ -88,6 +90,7 @@ public final class DreamRPGListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void beginLoading(PlayerJoinEvent event) {
         loadingGate.begin(event.getPlayer());
+        storage.restoreFullVitals(event.getPlayer());
         display.refreshAll();
     }
 
@@ -139,7 +142,7 @@ public final class DreamRPGListener implements Listener {
                                 experience.snapshot(player.getUniqueId())
                         );
                         Bukkit.getPluginManager().callEvent(readyEvent);
-                        storage.applyVitals(player);
+                        storage.restoreFullVitals(player);
                         storage.markReady(player.getUniqueId());
                         display.refreshAll();
                     });
@@ -157,14 +160,27 @@ public final class DreamRPGListener implements Listener {
     }
 
     /**
-     * Forces the main-city spawn after a death.
+     * Automatically respawns dead players on the next server tick.
+     *
+     * @param event Bukkit death event
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        tasks.runLater(1L, () -> {
+            if (player.isOnline() && player.isDead()) player.spigot().respawn();
+        });
+    }
+
+    /**
+     * Uses the spawn of the world where the player died, including when a bed is set.
      *
      * @param event Bukkit respawn event
      */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent event) {
         if (context.settings().spawn().teleportOnRespawn()) {
-            event.setRespawnLocation(spawnService.location());
+            event.setRespawnLocation(spawnService.location(event.getPlayer().getWorld()));
         }
     }
 
