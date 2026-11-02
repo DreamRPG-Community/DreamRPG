@@ -17,8 +17,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.nio.file.Path;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -28,9 +28,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Main-thread access to the loaded MM registry and its native spawner persistence. */
+/**
+ * Main-thread access to the loaded MM registry and its native spawner persistence.
+ */
 @InjectComponent
 public final class MythicMobService {
+    /**
+     * Base attribute labels shared with the RPG attribute page.
+     */
+    static final String HEALTH_ATTRIBUTE = "基础生命值";
+    static final String DAMAGE_ATTRIBUTE = "基础伤害";
     private final DreamRPGPlugin plugin;
     private final ContentWorkspace content;
 
@@ -41,8 +48,10 @@ public final class MythicMobService {
 
     public List<MobSummary> listMobs() {
         MainThread.require("Mob library requires the primary thread");
-        return MythicMobs.inst().getMobManager().getMobNames().stream().sorted()
-                .map(id -> summary(MythicMobs.inst().getMobManager().getMythicMob(id))).toList();
+        return MythicMobs.inst().getMobManager().getMobNames().stream()
+                .sorted()
+                .map(id -> summary(MythicMobs.inst().getMobManager().getMythicMob(id)))
+                .toList();
     }
 
     public Optional<MobSummary> find(String id) {
@@ -52,8 +61,10 @@ public final class MythicMobService {
 
     static FolderLayout layout(List<MobSummary> mobs) {
         Map<String, List<String>> folders = new LinkedHashMap<>();
-        mobs.stream().sorted(Comparator.comparing(MobSummary::sourceFile).thenComparing(MobSummary::internalName))
-                .forEach(mob -> folders.computeIfAbsent(mob.folder(), ignored -> new ArrayList<>()).add(mob.internalName()));
+        mobs.stream()
+                .sorted(Comparator.comparing(MobSummary::sourceFile).thenComparing(MobSummary::internalName))
+                .forEach(mob -> folders.computeIfAbsent(mob.folder(), ignored -> new ArrayList<>()).add(
+                        mob.internalName()));
         List<FolderLayout.Entry> entries = new ArrayList<>();
         folders.forEach((folder, ids) -> entries.add(new FolderLayout.Entry(folder, entries.size(), true, ids)));
         return new FolderLayout(entries);
@@ -61,7 +72,8 @@ public final class MythicMobService {
 
     private MobSummary summary(MythicMob mob) {
         Path source = mob.getConfig().getFile().toPath().toAbsolutePath().normalize();
-        if (!source.startsWith(content.root())) throw new IllegalStateException("Mob source is outside the content workspace: " + source);
+        if (!source.startsWith(content.root()))
+            throw new IllegalStateException("Mob source is outside the content workspace: " + source);
         String name = mob.getDisplayName().get();
         if (name == null || name.isBlank()) name = mob.getInternalName();
         String relativeFile = content.root().relativize(source).toString().replace('\\', '/');
@@ -73,22 +85,28 @@ public final class MythicMobService {
         MythicMob mob = MythicMobs.inst().getMobManager().getMythicMob(id);
         if (mob == null) return Optional.empty();
         List<MobDetails.Attribute> attributes = new ArrayList<>();
-        attributes.add(new MobDetails.Attribute("基础生命值", statExpression(mob.getHealth().toString())));
-        attributes.add(new MobDetails.Attribute("基础伤害", statExpression(mob.getDamage().toString())));
+        attributes.add(new MobDetails.Attribute(HEALTH_ATTRIBUTE, statExpression(mob.getHealth().toString())));
+        attributes.add(new MobDetails.Attribute(DAMAGE_ATTRIBUTE, statExpression(mob.getDamage().toString())));
         attributes.add(new MobDetails.Attribute("基础护甲", statExpression(mob.getArmor().toString())));
         attributes.add(new MobDetails.Attribute("每级生命值", String.valueOf(mob.getPerLevelHealth())));
         attributes.add(new MobDetails.Attribute("每级伤害", String.valueOf(mob.getPerLevelDamage())));
         attributes.add(new MobDetails.Attribute("每级护甲", String.valueOf(mob.getPerLevelArmor())));
         ConfigurationSection configuration = mob.getConfig().getFileConfiguration().getConfigurationSection(id);
-        configuration.getValues(true).entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
-            Object value = entry.getValue();
-            if (value instanceof ConfigurationSection) return;
-            if (value instanceof List<?> values) {
-                for (int index = 0; index < values.size(); index++)
-                    attributes.add(new MobDetails.Attribute(entry.getKey() + "[" + index + "]", String.valueOf(values.get(index))));
-            } else attributes.add(new MobDetails.Attribute(entry.getKey(), String.valueOf(value)));
-        });
-        List<MobDetails.Equipment> equipment = mob.getConfig().getStringList("Equipment").stream().map(this::equipment).toList();
+        configuration.getValues(true).entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    Object value = entry.getValue();
+                    if (value instanceof ConfigurationSection) return;
+                    if (value instanceof List<?> values) {
+                        for (int index = 0; index < values.size(); index++)
+                            attributes.add(new MobDetails.Attribute(entry.getKey() + "[" + index + "]",
+                                    String.valueOf(values.get(index))
+                            ));
+                    } else attributes.add(new MobDetails.Attribute(entry.getKey(), String.valueOf(value)));
+                });
+        List<MobDetails.Equipment> equipment = mob.getConfig().getStringList("Equipment").stream()
+                .map(this::equipment)
+                .toList();
         return Optional.of(new MobDetails(summary(mob), attributes, equipment));
     }
 
@@ -106,7 +124,8 @@ public final class MythicMobService {
     private MobDetails.Equipment equipment(String declaration) {
         EquipmentReference reference = equipmentReference(declaration);
         ItemStack preview;
-        if (plugin.items().configuration(reference.item()).isPresent()) preview = plugin.items().getItemStack(reference.item(), 1);
+        if (plugin.items().configuration(reference.item()).isPresent())
+            preview = plugin.items().getItemStack(reference.item(), 1);
         else {
             String[] parts = reference.item().split(":", 2);
             Material material;
@@ -122,7 +141,8 @@ public final class MythicMobService {
         return new MobDetails.Equipment(reference.slot(), declaration, preview);
     }
 
-    record EquipmentReference(String item, String slot) { }
+    record EquipmentReference(String item, String slot) {
+    }
 
     static EquipmentReference equipmentReference(String declaration) {
         String[] words = declaration.trim().split("\\s+");
@@ -176,7 +196,8 @@ public final class MythicMobService {
         for (var mob : List.copyOf(MythicMobs.inst().getMobManager().getActiveMobs())) {
             if (!mob.getType().getInternalName().equals(id)) continue;
             var entity = BukkitAdapter.adapt(mob.getEntity());
-            if (!(entity instanceof LivingEntity living) || living.isDead() || !living.getWorld().equals(player.getWorld())) continue;
+            if (!(entity instanceof LivingEntity living) || living.isDead() || !living.getWorld().equals(
+                    player.getWorld())) continue;
             if (living.getLocation().distanceSquared(player.getLocation()) > 32 * 32) continue;
             living.setHealth(0);
             killed++;
@@ -189,8 +210,11 @@ public final class MythicMobService {
         return MythicMobs.inst().getSpawnerManager().getSpawners().stream()
                 .filter(point -> Arrays.stream(point.getTypeName().split("[, ]+"))
                         .anyMatch(name -> name.split(":", 2)[0].equals(id)))
-                .map(point -> new SpawnPoint(point.getName(), point.getTypeName(), point.getWorldName(), point.getBlockX(), point.getBlockY(), point.getBlockZ()))
-                .sorted(Comparator.comparing(SpawnPoint::name)).toList();
+                .map(point -> new SpawnPoint(point.getName(), point.getTypeName(), point.getWorldName(),
+                        point.getBlockX(), point.getBlockY(), point.getBlockZ()
+                ))
+                .sorted(Comparator.comparing(SpawnPoint::name))
+                .toList();
     }
 
     public Optional<Location> spawnPointLocation(String name) {

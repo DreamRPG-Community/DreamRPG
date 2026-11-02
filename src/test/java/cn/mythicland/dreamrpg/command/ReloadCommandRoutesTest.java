@@ -4,6 +4,10 @@ import cn.mythicland.framework.bukkit.command.CommandRoute;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,22 +18,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReloadCommandRoutesTest {
     @Test
     void dreamRpgExposesSystemAndIndependentContentReloadCommands() {
-        List<CommandRoute> handlers = java.util.stream.Stream.of(DreamRPGCommand.class, ItemCommands.class)
+        List<CommandRoute> handlers = Stream.of(DreamRPGCommand.class, ItemCommands.class)
                 .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
                 .map(method -> method.getAnnotation(CommandRoute.class))
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .filter(handler -> path(handler).equals("reload") || path(handler).endsWith(" reload"))
                 .toList();
-        assertEquals(java.util.Set.of("reload", "content reload"), handlers.stream().map(ReloadCommandRoutesTest::path).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of("reload", "content reload"),
+                handlers.stream()
+                        .map(ReloadCommandRoutesTest::path)
+                        .collect(Collectors.toSet())
+        );
         assertTrue(handlers.stream().allMatch(CommandRoute::showInHelp));
     }
 
     @Test
     void itemListRemainsAvailableWithoutAnNpcDirectory() {
-        List<String> paths = java.util.stream.Stream.of(DreamRPGCommand.class, ItemCommands.class)
+        List<String> paths = Stream.of(DreamRPGCommand.class, ItemCommands.class)
                 .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
                 .map(method -> method.getAnnotation(CommandRoute.class))
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .map(ReloadCommandRoutesTest::path)
                 .toList();
         assertTrue(paths.contains("items list"));
@@ -43,11 +51,23 @@ class ReloadCommandRoutesTest {
     }
 
     @Test
+    void mobLibraryIsOnlyReachableThroughItsListSubcommand() {
+        List<String> paths = Stream.of(DreamRPGCommand.class, ItemCommands.class)
+                .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
+                .map(method -> method.getAnnotation(CommandRoute.class))
+                .filter(Objects::nonNull)
+                .map(ReloadCommandRoutesTest::path)
+                .toList();
+        assertTrue(paths.contains("mobs list"));
+        assertFalse(paths.contains("mobs"));
+    }
+
+    @Test
     void obsoleteCommandsAreNotRegistered() {
         for (Class<?> type : List.of(DreamRPGCommand.class, ItemCommands.class)) {
             assertTrue(Arrays.stream(type.getDeclaredMethods())
                     .map(method -> method.getAnnotation(CommandRoute.class))
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .noneMatch(handler -> List.of("npc", "check", "stats", "first-rewards")
                             .contains(path(handler))));
         }

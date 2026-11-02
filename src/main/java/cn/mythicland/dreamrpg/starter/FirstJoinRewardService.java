@@ -118,8 +118,8 @@ public final class FirstJoinRewardService implements Listener, AutoCloseable {
             player.sendMessage(LegacyText.colorize("&c首次奖励正在加载, 请稍候。"));
             return;
         }
-        if (menus.hasOpenMenu(player.getUniqueId())) menus.close(player);
-        openMenus.remove(player.getUniqueId());
+        FirstJoinRewardMenu previous = openMenus.get(player.getUniqueId());
+        if (previous != null) previous.onClose(player, player.getOpenInventory().getTopInventory());
         FirstJoinRewardMenu menu = new FirstJoinRewardMenu(
                 player.getUniqueId(),
                 true,
@@ -127,8 +127,8 @@ public final class FirstJoinRewardService implements Listener, AutoCloseable {
                 nextContents -> saveContents(player.getUniqueId(), nextContents),
                 () -> onMenuClosed(player.getUniqueId())
         );
-        openMenus.put(player.getUniqueId(), menu);
         menus.open(player, menu);
+        openMenus.put(player.getUniqueId(), menu);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -170,21 +170,22 @@ public final class FirstJoinRewardService implements Listener, AutoCloseable {
                         return;
                     }
                     tasks.runLater(1L, () -> {
-                        if (closed) return;
-                        Player player = Bukkit.getPlayer(uniqueId);
-                        if (player == null || !player.isOnline()) {
-                            releaseClaim(uniqueId);
-                            return;
-                        }
-                        try {
-                            FirstJoinRewardContents current = contents;
-                            if (current == null) current = reservation.contents();
-                            openClaimMenu(player, current);
-                        } catch (RuntimeException exception) {
-                            logger.log(Level.SEVERE, "Could not open first-join reward for " + uniqueId, exception);
-                            releaseClaim(uniqueId);
-                        }
-                    });
+                                if (closed) return;
+                                Player player = Bukkit.getPlayer(uniqueId);
+                                if (player == null || !player.isOnline()) {
+                                    releaseClaim(uniqueId);
+                                    return;
+                                }
+                                try {
+                                    FirstJoinRewardContents current = contents;
+                                    if (current == null) current = reservation.contents();
+                                    openClaimMenu(player, current);
+                                } catch (RuntimeException exception) {
+                                    logger.log(Level.SEVERE, "Could not open first-join reward for " + uniqueId, exception);
+                                    releaseClaim(uniqueId);
+                                }
+                            }
+                    );
                 }));
     }
 

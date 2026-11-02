@@ -80,7 +80,9 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
     public List<String> suggestions(CommandSender sender, CommandContext context) {
         if (context.argumentCount() != 2) return List.of();
         return switch (context.argument(1).toLowerCase(Locale.ROOT)) {
-            case "career" -> profiles.careers().stream().map(career -> career.id()).toList();
+            case "career" -> profiles.careers().stream()
+                    .map(career -> career.id())
+                    .toList();
             case "knockback" -> List.of("true", "false");
             default -> List.of();
         };
@@ -199,7 +201,11 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
 
     List<String> completeNpc(CommandContext context) {
         if (context.arguments().size() != 1) return List.of();
-        return catalog.offers().stream().map(offer -> offer.npc().toString()).distinct().sorted().toList();
+        return catalog.offers().stream()
+                .map(offer -> offer.npc().toString())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     void check(CommandContext context) {
@@ -224,10 +230,10 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
     }
 
     @CommandRoute(
-        path = {"dreamrpg", "npc", "open"},
-        maxArguments = Integer.MAX_VALUE,
-        permission = "dreamrpg.quests",
-        usages = "/dreamrpg npc open <NPC UUID>"
+            path = {"dreamrpg", "npc", "open"},
+            maxArguments = Integer.MAX_VALUE,
+            permission = "dreamrpg.quests",
+            usages = "/dreamrpg npc open <NPC UUID>"
     )
     void npcOpen(CommandContext context) {
         npc(context);
@@ -257,26 +263,31 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
     }
 
     @CommandRoute(
-        path = {"dreamrpg", "admin", "check"},
-        maxArguments = Integer.MAX_VALUE,
-        permission = "dreamrpg.admin"
+            path = {"dreamrpg", "admin", "check"},
+            maxArguments = Integer.MAX_VALUE,
+            permission = "dreamrpg.admin"
     )
     void adminCheck(CommandContext context) {
         check(context);
     }
 
     @CommandRoute(
-        path = {"dreamrpg", "admin", "first-rewards"},
-        maxArguments = Integer.MAX_VALUE,
-        permission = "dreamrpg.admin"
+            path = {"dreamrpg", "admin", "first-rewards"},
+            maxArguments = Integer.MAX_VALUE,
+            permission = "dreamrpg.admin"
     )
     void adminFirstRewards(CommandContext context) {
         firstRewards(context);
     }
 
-    @CommandRoute(path = {"dreamrpg", "mobs"}, maxArguments = 0, permission = "dreamrpg.admin")
-    void mobs(CommandContext context) {
-        new MythicMobMenu(mobService).open(player(context), lib.menuService());
+    // Like /drpg items list, the library is only reachable through its list subcommand.
+    @CommandRoute(path = {"dreamrpg", "mobs", "list"}, maxArguments = 0, permission = "dreamrpg.admin")
+    void mobsList(CommandContext context) {
+        openMobLibrary(context);
+    }
+
+    private void openMobLibrary(CommandContext context) {
+        new MythicMobMenu(mobService, plugin.combatModule()).open(player(context), lib.menuService());
     }
 
     @CommandRoute(

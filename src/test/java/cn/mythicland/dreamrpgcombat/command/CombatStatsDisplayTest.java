@@ -27,23 +27,24 @@ class CombatStatsDisplayTest {
                 .build();
 
         assertEquals(List.of(
-                "§2§lDream§aRPG §f| §7战斗属性",
-                "  §f",
-                "  §4嗜血: §f0%",
-                "  §a生命值: §f170",
-                "  §6物理攻击: §f100",
-                "  §d法术攻击: §f0",
-                "  §6物理防御: §f100%",
-                "  §d法术防御: §f100%",
-                "  §f物理穿透: §f0 / 0%",
-                "  §f法术穿透: §f0 / 0%",
-                "  §c暴击几率: §f0%",
-                "  §4暴击伤害: §f150%",
-                "  §a生命回复: §f100%",
-                "  §b移动速度: §f0%",
-                "  §b经验加成: §f-50%",
-                "  §f"
-        ), CombatStatsDisplay.render(stats));
+                        "§2§lDream§aRPG §f| §7战斗属性",
+                        "  §f",
+                        "  §4§l嗜血: §2§l0%",
+                        "  §a§l生命值: §2§l170",
+                        "  §6§l物理攻击: §2§l100",
+                        "  §d§l法术攻击: §2§l0",
+                        "  §6§l物理防御: §2§l100%",
+                        "  §d§l法术防御: §2§l100%",
+                        "  §f§l物理穿透: §2§l0 / 0%",
+                        "  §f§l法术穿透: §2§l0 / 0%",
+                        "  §c§l暴击几率: §2§l0%",
+                        "  §4§l暴击伤害: §2§l150%",
+                        "  §a§l生命回复: §2§l100%",
+                        "  §b§l移动速度: §2§l0%",
+                        "  §b§l经验加成: §2§l-50%",
+                        "  §f"
+                ), CombatStatsDisplay.render(stats)
+        );
     }
 
     @Test
@@ -58,23 +59,24 @@ class CombatStatsDisplayTest {
                 .build();
 
         assertEquals(List.of(
-                "§2§lDream§aRPG §f| §7战斗属性",
-                "  §f",
-                "  §4嗜血: §f4%",
-                "  §a生命值: §f0",
-                "  §6物理攻击: §f1",
-                "  §d法术攻击: §f0",
-                "  §6物理防御: §f0",
-                "  §d法术防御: §f0",
-                "  §f物理穿透: §f12 / 30%",
-                "  §f法术穿透: §f5 / 10%",
-                "  §c暴击几率: §f0%",
-                "  §4暴击伤害: §f150%",
-                "  §a生命回复: §f0%",
-                "  §b移动速度: §f7.5%",
-                "  §b经验加成: §f0%",
-                "  §f"
-        ), CombatStatsDisplay.render(stats));
+                        "§2§lDream§aRPG §f| §7战斗属性",
+                        "  §f",
+                        "  §4§l嗜血: §2§l4%",
+                        "  §a§l生命值: §2§l0",
+                        "  §6§l物理攻击: §2§l1",
+                        "  §d§l法术攻击: §2§l0",
+                        "  §6§l物理防御: §2§l0",
+                        "  §d§l法术防御: §2§l0",
+                        "  §f§l物理穿透: §2§l12 / 30%",
+                        "  §f§l法术穿透: §2§l5 / 10%",
+                        "  §c§l暴击几率: §2§l0%",
+                        "  §4§l暴击伤害: §2§l150%",
+                        "  §a§l生命回复: §2§l0%",
+                        "  §b§l移动速度: §2§l7.5%",
+                        "  §b§l经验加成: §2§l0%",
+                        "  §f"
+                ), CombatStatsDisplay.render(stats)
+        );
     }
 
     @Test
@@ -84,6 +86,6 @@ class CombatStatsDisplayTest {
                 .damageMaximum(-10.0D)
                 .build();
 
-        assertEquals("  §6物理攻击: §f-20 - -10 (基础伤害: 1)", CombatStatsDisplay.render(stats).get(4));
+        assertEquals("  §6§l物理攻击: §2§l-20 - -10 (基础伤害: 1)", CombatStatsDisplay.render(stats).get(4));
     }
 }
