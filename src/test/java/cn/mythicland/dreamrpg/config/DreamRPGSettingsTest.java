@@ -21,10 +21,10 @@ class DreamRPGSettingsTest {
         assertEquals(List.of(), settings.display().tab().header());
         assertEquals(List.of(), settings.display().tab().footer());
         assertEquals(
-                "{member_prefix} {prefix}{name}        ",
+                "{lp_prefix} {title} {prefix} {name} {member_prefix}        ",
                 settings.display().tab().playerNameFormat()
         );
-        assertEquals("{member_prefix} {prefix}{name}", settings.display().nameTagFormat());
+        assertEquals("{lp_prefix} {title} {prefix} {name} {member_prefix}", settings.display().nameTagFormat());
     }
 
     @Test

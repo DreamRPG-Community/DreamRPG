@@ -12,6 +12,7 @@ import cn.mythicland.dreamrpg.mob.MythicMobMenu;
 import cn.mythicland.dreamrpg.mob.MythicMobService;
 import cn.mythicland.dreamrpg.settings.PlayerSettingsService;
 import cn.mythicland.dreamrpg.starter.FirstJoinRewardService;
+import cn.mythicland.dreamrpg.trade.PlayerTradeService;
 import cn.mythicland.dreamrpgcombat.command.CombatStatsDisplay;
 import cn.mythicland.framework.bukkit.command.CommandArgument;
 import cn.mythicland.framework.bukkit.command.CommandBinding;
@@ -51,6 +52,7 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
     private final CoinService coins;
     private final PlayerSettingsService playerSettings;
     private final MythicMobService mobService;
+    private final PlayerTradeService trades;
 
     public DreamRPGCommand(
             DreamRPGPlugin plugin,
@@ -63,7 +65,8 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
             CoinService coins,
             PlayerSettingsService playerSettings,
             CampaignMenus campaign,
-            MythicMobService mobService
+            MythicMobService mobService,
+            PlayerTradeService trades
     ) {
         super(plugin, lib, campaign);
         this.mobService = Objects.requireNonNull(mobService, "mobService");
@@ -74,6 +77,7 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
         this.coins = Objects.requireNonNull(coins, "coins");
         this.playerSettings = Objects.requireNonNull(playerSettings, "playerSettings");
         this.firstJoinRewards = Objects.requireNonNull(firstJoinRewards, "firstJoinRewards");
+        this.trades = Objects.requireNonNull(trades, "trades");
     }
 
     @Override
@@ -227,6 +231,29 @@ public final class DreamRPGCommand extends ItemCommands implements SuggestionPro
         CombatStatsDisplay.render(combat.statsService().getStats(player), combat.settings())
                 .forEach(player::sendMessage);
         combat.statsService().levelRequirementDisplay(player).forEach(player::sendMessage);
+    }
+
+    @CommandRoute(
+            path = {"dreamrpg"},
+            minArguments = 1,
+            maxArguments = 1,
+            usages = "/trade <在线玩家>"
+    )
+    void trade(CommandContext context) {
+        if (!context.label().equalsIgnoreCase("trade")) {
+            context.sender().sendMessage(VanillaCommandMessages.usage("/dreamrpg <子命令>"));
+            return;
+        }
+        if (!(context.sender() instanceof Player player)) {
+            context.sender().sendMessage(VanillaCommandMessages.red("只有玩家可以发起交易。"));
+            return;
+        }
+        Player target = findOnlinePlayer(context.argument(0));
+        if (target == null) {
+            player.sendMessage(VanillaCommandMessages.red("该玩家不在线。"));
+            return;
+        }
+        trades.request(player, target);
     }
 
     @CommandRoute(

@@ -181,7 +181,7 @@ public record DreamRPGSettings(
             boolean teleportOnRespawn,
             @ConfigProperty(
                     path = "chat.format",
-                    defaultValue = "{member_prefix} {prefix} {name}&7: &f{message}",
+                    defaultValue = "{lp_prefix} {title} {prefix} {name} {member_prefix}&7: &f{message}",
                     nonBlank = true,
                     trim = false
             )
@@ -206,14 +206,14 @@ public record DreamRPGSettings(
             List<String> tabFooter,
             @ConfigProperty(
                     path = "display.tab.player-name-format",
-                    defaultValue = "{member_prefix} {prefix}{name}        ",
+                    defaultValue = "{lp_prefix} {title} {prefix} {name} {member_prefix}        ",
                     nonBlank = true,
                     trim = false
             )
             String playerNameFormat,
             @ConfigProperty(
                     path = "display.name-tag-format",
-                    defaultValue = "{member_prefix} {prefix}{name}",
+                    defaultValue = "{lp_prefix} {title} {prefix} {name} {member_prefix}",
                     nonBlank = true,
                     trim = false
             )

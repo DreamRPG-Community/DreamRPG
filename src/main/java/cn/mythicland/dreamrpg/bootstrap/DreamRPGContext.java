@@ -95,7 +95,8 @@ public final class DreamRPGContext implements AutoCloseable {
                             new MigrationSpec(8, "V8__add_auto_pickup.sql"),
                             new MigrationSpec(9, "V9__create_memberships.sql"),
                             new MigrationSpec(10, "V10__create_member_names.sql"),
-                            new MigrationSpec(11, "V11__index_member_names.sql")
+                            new MigrationSpec(11, "V11__index_member_names.sql"),
+                            new MigrationSpec(12, "V12__create_player_titles.sql")
                     )
             );
             MythicMemberRuntime openedMembership = new MythicMemberRuntime(

@@ -64,8 +64,8 @@ public final class MythicMobMenu extends InventoryMenu {
             CombatStat.HEALTH_REGEN,
             CombatStat.MOVEMENT_SPEED,
             CombatStat.EXPERIENCE_BONUS,
-            CombatStat.PHYSICAL_PENETRATION_PERCENT,
-            CombatStat.MAGIC_PENETRATION_PERCENT
+            CombatStat.PENETRATION,
+            CombatStat.PENETRATION_PERCENT
     );
     private final MythicMobService service;
     private final CombatApi combat;

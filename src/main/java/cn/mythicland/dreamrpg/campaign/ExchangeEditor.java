@@ -3,6 +3,8 @@ package cn.mythicland.dreamrpg.campaign;
 import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
+import cn.mythicland.dreamrpg.exchange.ItemExchangeService;
+import cn.mythicland.dreamrpg.exchange.ExchangeType;
 import cn.mythicland.dreamrpg.exchange.ItemAmount;
 import cn.mythicland.framework.bukkit.component.ListenerComponent;
 import cn.mythicland.framework.bukkit.menu.MenuItems;
@@ -48,6 +50,7 @@ import org.bukkit.inventory.ItemStack;
 public final class ExchangeEditor implements ManagedLifecycle, Listener {
     private static final int BACK_SLOT = 45;
     private static final int REWARD_SLOT = 49;
+    private static final int TYPE_SLOT = 47;
     private static final int SAVE_SLOT = 53;
     private final DreamRPGPlugin plugin;
     private final CampaignCatalog catalog;
@@ -103,6 +106,7 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
                     }
                     inventory.setItem(BACK_SLOT, MenuItems.button(Material.ARROW, "&c返回", List.of("&7放弃本次更改并返回")));
                     inventory.setItem(SAVE_SLOT, MenuItems.button(Material.EMERALD, "&a保存兑换", List.of("&7保存材料和奖励")));
+                    updateTypeButton(session);
                     sessions.put(player.getUniqueId(), session);
                     player.openInventory(inventory);
                 }
@@ -119,6 +123,14 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
             return;
         }
         int raw = event.getRawSlot();
+        if (raw == TYPE_SLOT) {
+            event.setCancelled(true);
+            if (event.getClick() == ClickType.LEFT && player.hasPermission("dreamrpg.admin")) {
+                session.type = session.type.next();
+                updateTypeButton(session);
+            }
+            return;
+        }
         if (raw == BACK_SLOT) {
             event.setCancelled(true);
             if (event.getClick() == ClickType.LEFT) {
@@ -221,30 +233,50 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
                 player.sendMessage("§c请放入兑换材料和奖励。");
                 return;
             }
-            ExchangeOffer replacement = new ExchangeOffer(session.id, session.npc, costs, identify(reward));
+            ExchangeOffer replacement = new ExchangeOffer(session.id, session.npc, costs, identify(reward), session.type);
             session.saving = true;
-            lib.runLater(1L, () -> {
-                        if (session(session.inventory, player.getUniqueId()) != session) return;
-                        List<ItemStack> inputs = takeInputs(session);
-                        catalog.saveOffer(session.offer, replacement, session.stage).whenComplete((ignored, error) -> {
-                            if (error != null) {
-                                returnItems(player, inputs);
-                                if (session(session.inventory, player.getUniqueId()) == session) {
-                                    session.saving = false;
-                                    updateRewardPlaceholder(session);
-                                }
-                                plugin.getLogger().log(Level.SEVERE, "Failed to save exchange " + session.id, error);
-                                if (player.isOnline()) player.sendMessage("§c保存失败, 物品已返还。");
-                            } else if (player.isOnline()) {
-                                player.sendMessage("§a已保存。");
-                                if (session(session.inventory, player.getUniqueId()) == session) session.back.accept(player);
-                            }
-                        });
-                    }
-            );
+            lib.runLater(1L, () -> saveOffer(player, session, replacement));
         } catch (IllegalArgumentException exception) {
             player.sendMessage("§c请使用物品库中的有效物品。");
         }
+    }
+
+    private void saveOffer(Player player, Session session, ExchangeOffer replacement) {
+        if (!isOpen(player, session)) return;
+        if (catalog.usesMerchant(session.npc)) {
+            try {
+                ItemExchangeService.merchantRecipe(plugin.items(), replacement);
+            } catch (IllegalArgumentException error) {
+                session.saving = false;
+                player.sendMessage("§c无法保存到村民商店: " + error.getMessage());
+                return;
+            }
+        }
+
+        List<ItemStack> inputs = takeInputs(session);
+        catalog.saveOffer(session.offer, replacement, session.stage)
+                .whenComplete((ignored, error) -> {
+                    if (error != null) {
+                        returnItems(player, inputs);
+                        if (isOpen(player, session)) {
+                            session.saving = false;
+                            updateRewardPlaceholder(session);
+                        }
+                        if (error instanceof IllegalArgumentException && catalog.usesMerchant(session.npc)) {
+                            if (player.isOnline()) player.sendMessage("§c无法保存到村民商店: " + error.getMessage());
+                        } else {
+                            plugin.getLogger().log(Level.SEVERE, "Failed to save exchange " + session.id, error);
+                            if (player.isOnline()) player.sendMessage("§c保存失败, 物品已返还。");
+                        }
+                    } else if (player.isOnline()) {
+                        player.sendMessage("§a已保存。");
+                        if (isOpen(player, session)) session.back.accept(player);
+                    }
+                });
+    }
+
+    private boolean isOpen(Player player, Session session) {
+        return session(session.inventory, player.getUniqueId()) == session;
     }
 
     private void populate(Session session) {
@@ -293,6 +325,17 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
             if (!empty(item) && cursor.isSimilar(item)) return true;
         }
         return false;
+    }
+
+    private static void updateTypeButton(Session session) {
+        List<String> lore = new ArrayList<>();
+        for (ExchangeType type : ExchangeType.values()) {
+            lore.add((type == session.type ? "&a▶ " : "&7  ") + type.displayName());
+        }
+        lore.add(" ");
+        lore.add("&7仅改变描述, 消耗和产出规则相同");
+        lore.add("&e左键切换!");
+        session.inventory.setItem(TYPE_SLOT, MenuItems.button(Material.BOOK, "&a展示类型: " + session.type.displayName(), lore));
     }
 
     private static void updateRewardPlaceholder(Session session) {
@@ -367,6 +410,7 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
         private final UUID npc;
         private final String stage;
         private final Consumer<Player> back;
+        private ExchangeType type;
         private final Set<Integer> samples = new HashSet<>();
         private boolean rewardPlaceholder;
         private boolean pending;
@@ -385,6 +429,9 @@ public final class ExchangeEditor implements ManagedLifecycle, Listener {
             this.npc = npc;
             this.stage = stage;
             this.back = back;
+            if (offer != null) this.type = offer.type();
+            else if (stage != null) this.type = ExchangeType.TASK;
+            else this.type = ExchangeType.EXCHANGE;
         }
 
         @Override

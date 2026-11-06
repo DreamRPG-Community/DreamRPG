@@ -1,5 +1,6 @@
 # NPC exchanges outside the chapter directory. All items reference the RPG item library.
 version: 1
+# Offer type: task, exchange (default), or upgrade. Only changes display wording.
 exchanges: {}
 # Optional NPC UUID to ordered task/exchange IDs; empty entries leave a slot empty.
 offer-order: {}

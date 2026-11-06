@@ -1,6 +1,9 @@
 package cn.mythicland.dreamrpg.chat;
 
 import cn.mythicland.dreamrpg.api.PlayerProfile;
+import cn.mythicland.dreamrpg.api.TitleApi;
+import cn.mythicland.dreamrpg.api.TitleDefinition;
+import cn.mythicland.dreamrpg.display.PlayerNameFormat;
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.config.DreamRPGSettings;
 import cn.mythicland.dreamrpg.member.MemberAccessService;
@@ -33,6 +36,7 @@ public final class DreamRPGChatListener implements Listener {
     private final PlayerProfileService profiles;
     private final MemberAccessService members;
     private final TemplateRenderer templates;
+    private final TitleApi titles;
 
     /**
      * Creates the chat listener.
@@ -43,12 +47,14 @@ public final class DreamRPGChatListener implements Listener {
     public DreamRPGChatListener(
             DreamRPGContext context,
             PlayerProfileService profiles,
-            MemberAccessService members
+            MemberAccessService members,
+            TitleApi titles
     ) {
         this.context = Objects.requireNonNull(context, "context");
         this.profiles = Objects.requireNonNull(profiles, "profiles");
         this.members = Objects.requireNonNull(members, "members");
         this.templates = context.templates();
+        this.titles = Objects.requireNonNull(titles, "titles");
     }
 
     private static String escapeFormat(String renderedFormat) {
@@ -69,12 +75,17 @@ public final class DreamRPGChatListener implements Listener {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("prefix", profile.career().prefix());
         values.put("name", profile.career().nameColor() + event.getPlayer().getName());
-        values.put("member_prefix", this.members.prefix(event.getPlayer()));
+        String permissionPrefix = members.permissionPrefix(event.getPlayer());
+        values.put("lp_prefix", permissionPrefix);
+        values.put("member_prefix", members.memberSuffix(event.getPlayer()));
         values.put("message", MESSAGE_SLOT);
+        String title = titles.equipped(event.getPlayer().getUniqueId()).map(TitleDefinition::displayName).orElse("");
+        values.put("title", title);
 
         DreamRPGSettings.ChatSettings settings = context.settings().chat();
+        String format = PlayerNameFormat.ordered(settings.format(), !title.isEmpty(), !permissionPrefix.isEmpty());
         String renderedFormat = templates.render(
-                withMemberPrefix(settings.format()),
+                format,
                 event.getPlayer(),
                 values
         );
@@ -90,11 +101,5 @@ public final class DreamRPGChatListener implements Listener {
         }
         String plainMessage = ChatColor.stripColor(LegacyText.colorize(message));
         return ChatColor.WHITE + plainMessage;
-    }
-
-    private static String withMemberPrefix(String template) {
-        String resolved = template.replace("%luckperms_prefix%", "{member_prefix}");
-        if (resolved.contains("{member_prefix}")) return resolved;
-        return "{member_prefix} " + resolved;
     }
 }

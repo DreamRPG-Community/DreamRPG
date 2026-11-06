@@ -19,6 +19,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CombatStatsServiceTest {
 
     @Test
+    void sumsSharedPenetrationAcrossEquipmentAndClampsTheRate() {
+        CombatItemStats weapon = new CombatItemStats(Map.of(
+                CombatStat.PENETRATION, new NumericRange(12, 12, false),
+                CombatStat.PENETRATION_PERCENT, new NumericRange(80, 80, true)
+        ), List.of());
+        CombatItemStats armor = new CombatItemStats(Map.of(
+                CombatStat.PENETRATION, new NumericRange(5, 5, false),
+                CombatStat.PENETRATION_PERCENT, new NumericRange(50, 50, true)
+        ), List.of());
+        CombatStatsSnapshot result = CombatStatsService.aggregate(List.of(weapon, armor));
+        assertEquals(17, result.value(CombatStat.PENETRATION));
+        assertEquals(100, result.value(CombatStat.PENETRATION_PERCENT));
+        CombatStatsSnapshot negative = CombatStatsService.aggregate(List.of(new CombatItemStats(
+                Map.of(CombatStat.PENETRATION_PERCENT, new NumericRange(-30, -30, true)), List.of()
+        )));
+        assertEquals(0, negative.value(CombatStat.PENETRATION_PERCENT));
+    }
+
+    @Test
     void aggregatesDamageRangesAndClampsPercentageAttributes() {
         CombatItemStats mainHand = new CombatItemStats(Map.of(
                 CombatStat.DAMAGE, new NumericRange(400.0D, 450.0D, false),

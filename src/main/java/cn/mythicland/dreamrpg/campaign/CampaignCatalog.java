@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,6 +44,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
     private final DreamLibApi lib;
     private Snapshot snapshot = new Snapshot(List.of(), List.of());
     private Map<UUID, List<String>> orders = Map.of();
+    private Set<UUID> merchantNpcs = Set.of();
     private boolean saving;
     private CompletableFuture<Void> saveTail = CompletableFuture.completedFuture(null);
     private boolean enabled;
@@ -63,6 +65,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
         enabled = false;
         snapshot = new Snapshot(List.of(), List.of());
         orders = Map.of();
+        merchantNpcs = Set.of();
     }
 
     @Override
@@ -84,16 +87,94 @@ public final class CampaignCatalog implements ManagedLifecycle {
                         throw new IllegalArgumentException("Duplicate task or exchange ID: " + offer.id());
                 });
         Map<UUID, List<String>> loadedOrders = parseOrders(exchanges);
+        Set<UUID> loadedModes = parseMerchantNpcs(exchanges);
+        validateMerchantModes(loadedModes, stages, groups);
         Snapshot previous = snapshot;
+        Set<UUID> previousModes = merchantNpcs;
         Map<UUID, List<String>> previousOrders = orders;
         Snapshot next = new Snapshot(stages, groups);
         return new ContentUpdate(() -> {
             snapshot = next;
             orders = loadedOrders;
+            merchantNpcs = loadedModes;
         }, () -> {
             snapshot = previous;
             orders = previousOrders;
+            merchantNpcs = previousModes;
         });
+    }
+
+    public boolean usesMerchant(UUID npc) {
+        return merchantNpcs.contains(npc);
+    }
+
+    public static void validateMerchantShape(List<ExchangeOffer> offers) {
+        if (offers.isEmpty() || offers.size() > 255)
+            throw new IllegalArgumentException("村民商店必须有 1 至 255 个交易项目。");
+        for (ExchangeOffer offer : offers) {
+            if (offer.requires().stream().map(cost -> cost.item()).distinct().count() > 2)
+                throw new IllegalArgumentException(offer.id() + " 需要超过两个材料格。");
+        }
+    }
+
+    private static void validateMerchantModes(
+            Set<UUID> modes,
+            List<CampaignStage> stages,
+            List<ExchangeGroup> groups
+    ) {
+        for (UUID npc : modes) {
+            validateMerchantShape(Stream.concat(stages.stream().flatMap(stage -> stage.tasks().stream()),
+                            groups.stream().flatMap(group -> group.offers().stream()))
+                    .filter(offer -> offer.npc().equals(npc)).toList());
+        }
+    }
+
+    static Set<UUID> parseMerchantNpcs(YamlConfiguration yaml) {
+        if (!yaml.contains("exchange-modes")) return Set.of();
+        ConfigurationSection modes = yaml.getConfigurationSection("exchange-modes");
+        if (modes == null) throw new IllegalArgumentException("exchange-modes must be a section");
+        Set<UUID> result = new HashSet<>();
+        for (String key : modes.getKeys(false)) {
+            if (!"merchant".equals(modes.get(key))) {
+                throw new IllegalArgumentException("Invalid exchange mode for NPC: " + key);
+            }
+            result.add(UUID.fromString(key));
+        }
+        return Set.copyOf(result);
+    }
+
+    CompletableFuture<Void> saveMerchantMode(UUID npc, boolean merchant) {
+        MainThread.require("NPC mode changes require the primary thread");
+        if (!enabled || saving) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Catalog is unavailable for editing"));
+        }
+        if (merchant) validateMerchantShape(offersForNpc(npc));
+        Set<UUID> previous = merchantNpcs;
+        Snapshot expected = snapshot;
+        saving = true;
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        saveTail = result;
+        lib.supplyAsync(() -> {
+            ContentDocument document = document("exchanges.yml");
+            selectNpcDestination(document, npc, "exchanges.yml");
+            YamlConfiguration yaml = document.yaml();
+            if (!previous.equals(parseMerchantNpcs(yaml))
+                    || !expected.equals(new Snapshot(parse(load("stages.yml")), parseGroups(yaml)))) {
+                throw new IllegalStateException("NPC exchange content changed externally");
+            }
+            yaml.set("exchange-modes." + npc, merchant ? "merchant" : null);
+            Set<UUID> updated = parseMerchantNpcs(yaml);
+            document.save();
+            return updated;
+        }).whenComplete((updated, error) -> lib.runOnMain(() -> {
+            saving = false;
+            if (error != null) result.completeExceptionally(error);
+            else {
+                if (enabled) merchantNpcs = updated;
+                result.complete(null);
+            }
+        }));
+        return result;
     }
 
     static Map<UUID, List<String>> parseOrders(YamlConfiguration yaml) {
@@ -187,6 +268,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
                     if (!ids.add(offer.id())) throw new IllegalArgumentException("Duplicate task or exchange ID: " + offer.id());
                 });
         parseOrders(yaml);
+        validateMerchantModes(parseMerchantNpcs(yaml), tasks, groups);
     }
 
     /** Validates all active package quests and exchanges as a single catalog. */
@@ -196,8 +278,12 @@ public final class CampaignCatalog implements ManagedLifecycle {
         var groups = parseGroups(exchanges);
         Set<String> ids = new HashSet<>();
         Stream.concat(stages.stream().flatMap(stage -> stage.tasks().stream()), groups.stream().flatMap(group -> group.offers().stream()))
-                .forEach(offer -> { if (!ids.add(offer.id())) throw new IllegalArgumentException("Duplicate task or exchange ID: " + offer.id()); });
+                .forEach(offer -> {
+                    if (!ids.add(offer.id()))
+                        throw new IllegalArgumentException("Duplicate task or exchange ID: " + offer.id());
+                });
         parseOrders(exchanges);
+        validateMerchantModes(parseMerchantNpcs(exchanges), stages, groups);
     }
 
     public List<ExchangeGroup> groups() {
@@ -259,7 +345,9 @@ public final class CampaignCatalog implements ManagedLifecycle {
     }
 
     public CompletableFuture<Void> saveOffer(
-            ExchangeOffer expected, ExchangeOffer replacement, String stageId
+            ExchangeOffer expected,
+            ExchangeOffer replacement,
+            String stageId
     ) {
         boolean task = stageId != null;
         if (expected != null &&
@@ -274,7 +362,10 @@ public final class CampaignCatalog implements ManagedLifecycle {
     }
 
     private CompletableFuture<Void> changeOffer(
-            ExchangeOffer expected, ExchangeOffer replacement, boolean task, String stageId
+            ExchangeOffer expected,
+            ExchangeOffer replacement,
+            boolean task,
+            String stageId
     ) {
         if (!enabled) return CompletableFuture.failedFuture(new IllegalStateException("Catalog is disabled"));
         if (saving) return CompletableFuture.failedFuture(new IllegalStateException("Catalog save is in progress"));
@@ -284,6 +375,17 @@ public final class CampaignCatalog implements ManagedLifecycle {
         if (expected != null &&
                 (find(expected.id()).filter(expected::equals).isEmpty() || isTask(expected.id()) != task)) {
             return CompletableFuture.failedFuture(new IllegalStateException("Offer has changed"));
+        }
+        UUID npc = replacement == null ? expected.npc() : replacement.npc();
+        if (usesMerchant(npc)) {
+            List<ExchangeOffer> updatedOffers = new ArrayList<>(offersForNpc(npc));
+            if (expected != null) updatedOffers.remove(expected);
+            if (replacement != null) updatedOffers.add(replacement);
+            try {
+                validateMerchantShape(updatedOffers);
+            } catch (IllegalArgumentException error) {
+                return CompletableFuture.failedFuture(error);
+            }
         }
         saving = true;
         CompletableFuture<Void> result = new CompletableFuture<>();
@@ -333,9 +435,10 @@ public final class CampaignCatalog implements ManagedLifecycle {
         }
         if (tasks().stream().noneMatch(task -> task.npc().equals(npc))
                 && groups().stream().noneMatch(group -> group.npc().equals(npc))
-                && !orders.containsKey(npc)) return CompletableFuture.completedFuture(null);
+                && !orders.containsKey(npc) && !usesMerchant(npc)) return CompletableFuture.completedFuture(null);
         Snapshot expected = snapshot;
         Map<UUID, List<String>> expectedOrders = orders;
+        Set<UUID> expectedModes = merchantNpcs;
         saving = true;
         CompletableFuture<Void> result = new CompletableFuture<>();
         saveTail = result;
@@ -346,7 +449,8 @@ public final class CampaignCatalog implements ManagedLifecycle {
                 YamlConfiguration stages = stagesDocument.yaml();
                 YamlConfiguration exchanges = exchangesDocument.yaml();
                 if (!expected.equals(new Snapshot(parse(orderedQuests(lib.content(), stages)), parseGroups(exchanges)))
-                        || !expectedOrders.equals(parseOrders(exchanges)))
+                        || !expectedOrders.equals(parseOrders(exchanges))
+                        || !expectedModes.equals(parseMerchantNpcs(exchanges)))
                     throw new IllegalStateException("NPC projects changed externally before removal: " + npc);
                 removeNpcYaml(stages, exchanges, npc);
                 Snapshot updated = new Snapshot(parse(orderedQuests(lib.content(), stages)), parseGroups(exchanges));
@@ -356,7 +460,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
                     exchangesDocument.write(transaction);
                     transaction.commit();
                 }
-                return new RemovalResult(updated, updatedOrders);
+                return new RemovalResult(updated, updatedOrders, parseMerchantNpcs(exchanges));
             } catch (IOException exception) {
                 throw new CompletionException(exception);
             }
@@ -367,6 +471,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
                 if (enabled) {
                     snapshot = updated.snapshot();
                     orders = updated.orders();
+                    merchantNpcs = updated.merchantNpcs();
                 }
                 result.complete(null);
             }
@@ -384,9 +489,14 @@ public final class CampaignCatalog implements ManagedLifecycle {
             if (group.npc().equals(npc)) exchanges.set("exchanges." + group.id(), null);
         }
         exchanges.set("offer-order." + npc, null);
+        exchanges.set("exchange-modes." + npc, null);
     }
 
-    private record RemovalResult(Snapshot snapshot, Map<UUID, List<String>> orders) {
+    private record RemovalResult(
+            Snapshot snapshot,
+            Map<UUID, List<String>> orders,
+            Set<UUID> merchantNpcs
+    ) {
     }
 
     static void changeYaml(
@@ -436,6 +546,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
             return;
         }
         if (task) yaml.set(base + ".npc", replacement.npc().toString());
+        yaml.set(base + ".type", replacement.type().name().toLowerCase(Locale.ROOT));
         yaml.set(base + ".requires", replacement.requires().stream()
                 .map(item -> Map.of("item", item.item(), "amount", item.amount())).toList());
         yaml.set(base + ".reward.item", replacement.reward().item());
@@ -447,6 +558,7 @@ public final class CampaignCatalog implements ManagedLifecycle {
                 .filter(group -> group.offers().stream().anyMatch(expected::equals)).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Exchange file changed since editing began"));
         String base = "exchanges." + owner.id() + ".offers." + expected.id();
+        yaml.set(base + ".type", replacement.type().name().toLowerCase(Locale.ROOT));
         yaml.set(base + ".requires", replacement.requires().stream()
                 .map(item -> Map.of("item", item.item(), "amount", item.amount())).toList());
         yaml.set(base + ".reward.item", replacement.reward().item());

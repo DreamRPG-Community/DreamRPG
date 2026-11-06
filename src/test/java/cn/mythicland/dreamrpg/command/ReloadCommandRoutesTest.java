@@ -47,7 +47,24 @@ class ReloadCommandRoutesTest {
         assertFalse(paths.contains("exchanges"));
         assertFalse(paths.contains("stages"));
         assertFalse(paths.contains("quests"));
-        assertFalse(paths.contains(""));
+    }
+
+    @Test
+    void tradeAliasUsesTheRootRouteWithExactlyOnePlayerArgument() {
+        List<CommandRoute> roots = Stream.of(DreamRPGCommand.class, ItemCommands.class)
+                .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
+                .map(method -> method.getAnnotation(CommandRoute.class))
+                .filter(Objects::nonNull)
+                .filter(route -> path(route).isEmpty())
+                .toList();
+        assertEquals(1, roots.size());
+        CommandRoute trade = roots.getFirst();
+        assertEquals(List.of("dreamrpg"), Arrays.asList(trade.path()));
+        assertEquals(1, trade.minArguments());
+        assertEquals(1, trade.maxArguments());
+        assertEquals(List.of("/trade <在线玩家>"), Arrays.asList(trade.usages()));
+        assertEquals("", trade.permission());
+        assertTrue(trade.executable());
     }
 
     @Test

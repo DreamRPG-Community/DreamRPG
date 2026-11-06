@@ -76,31 +76,17 @@ public enum CombatStat {
             false,
             CombatStatType.PERMANENT
     ),
-    PHYSICAL_PENETRATION(
-            "physical-penetration",
-            "物理穿透",
-            List.of("物理穿透"),
+    PENETRATION(
+            "penetration",
+            "穿透值",
+            List.of("穿透值"),
             false,
             CombatStatType.PERMANENT
     ),
-    PHYSICAL_PENETRATION_PERCENT(
-            "physical-penetration-percent",
-            "物理穿透",
-            List.of("物理穿透"),
-            true,
-            CombatStatType.PERMANENT
-    ),
-    MAGIC_PENETRATION(
-            "magic-penetration",
-            "法术穿透",
-            List.of("法术穿透"),
-            false,
-            CombatStatType.PERMANENT
-    ),
-    MAGIC_PENETRATION_PERCENT(
-            "magic-penetration-percent",
-            "法术穿透",
-            List.of("法术穿透"),
+    PENETRATION_PERCENT(
+            "penetration-percent",
+            "穿透率",
+            List.of("穿透率"),
             true,
             CombatStatType.PERMANENT
     ),
@@ -165,6 +151,23 @@ public enum CombatStat {
      */
     public String defaultDisplayName() {
         return defaultDisplayName;
+    }
+
+    /**
+     * Returns the legacy label color shared by item-style lore and combat attribute displays.
+     *
+     * @return an ampersand color code without a bold format code
+     */
+    public String displayColor() {
+        return switch (this) {
+            case DAMAGE, DEFENSE, PHYSICAL_DEFENSE -> "&6";
+            case MAGIC_DAMAGE, MAGIC_DEFENSE -> "&d";
+            case HEALTH, HEALTH_REGEN -> "&a";
+            case CRIT_CHANCE -> "&c";
+            case CRIT_DAMAGE, LIFESTEAL -> "&4";
+            case PENETRATION, PENETRATION_PERCENT -> "&f";
+            case MOVEMENT_SPEED, EXPERIENCE_BONUS -> "&b";
+        };
     }
 
     /**

@@ -1,6 +1,8 @@
 package cn.mythicland.dreamrpgcombat;
 
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
+import cn.mythicland.dreamrpg.api.TitleApi;
+import cn.mythicland.dreamrpg.api.TitleDefinition;
 import cn.mythicland.dreamrpgcombat.actionbar.CombatHealthBarService;
 import cn.mythicland.dreamrpgcombat.autoclick.AutoClickerService;
 import cn.mythicland.dreamrpgcombat.api.CombatApi;
@@ -21,6 +23,8 @@ import cn.mythicland.framework.component.LifecycleComponent;
 import cn.mythicland.framework.component.ManagedLifecycle;
 
 import java.util.Objects;
+import java.util.List;
+import java.util.Map;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.LivingEntity;
@@ -74,11 +78,14 @@ public final class DreamRPGCombatLifecycle implements ManagedLifecycle, CombatAp
         if (plugin.getServer().getPluginManager().isPluginEnabled("DreamRPG")) {
             experienceIntegration = DreamRPGExperienceIntegration.detect(plugin);
         }
+        TitleApi titles = Objects.requireNonNull(Bukkit.getServicesManager().load(TitleApi.class), "Title service is unavailable");
         statsService = new CombatStatsService(
                 plugin,
                 settings,
                 experienceIntegration == null ? null : experienceIntegration::rpgLevel,
-                experienceIntegration == null ? null : experienceIntegration::rpgHealth
+                experienceIntegration == null ? null : experienceIntegration::rpgHealth,
+                playerId -> titles.equipped(playerId).map(TitleDefinition::combatStats)
+                        .orElseGet(() -> new CombatItemStats(Map.of(), List.of()))
         );
         MythicMobsAdapter mythicMobsAdapter = MythicMobsAdapter.detect();
         healthBarService = new CombatHealthBarService(mythicMobsAdapter);

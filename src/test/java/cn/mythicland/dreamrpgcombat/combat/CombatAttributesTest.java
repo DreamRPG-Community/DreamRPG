@@ -16,27 +16,36 @@ import static org.junit.jupiter.api.Assertions.*;
 class CombatAttributesTest {
 
     @Test
-    void separatesPenetrationUnitsWithoutDifferentVisibleLabels() {
+    void parsesSharedPenetrationValueAndRate() {
         EnumMap<CombatStat, String> labels = new EnumMap<>(CombatStat.class);
         for (CombatStat stat : CombatStat.values()) labels.put(stat, stat.defaultDisplayName());
         var item = new CombatLoreParser(new CombatSettings(false, labels)).parse(List.of(
-                "物理穿透: +100", "物理穿透: +30%", "法术穿透: +20", "法术穿透: +15%",
+                "穿透值: +100", "穿透率: +30%",
                 "移动速度: +12%", "嗜血: +3%", "法术攻击: +10-20"
         ));
         assertTrue(item.invalidLines().isEmpty());
-        assertEquals(100, item.value(CombatStat.PHYSICAL_PENETRATION).orElseThrow().average());
-        assertEquals(30, item.value(CombatStat.PHYSICAL_PENETRATION_PERCENT).orElseThrow().average());
-        assertEquals(20, item.value(CombatStat.MAGIC_PENETRATION).orElseThrow().average());
-        assertEquals(15, item.value(CombatStat.MAGIC_PENETRATION_PERCENT).orElseThrow().average());
+        assertEquals(100, item.value(CombatStat.PENETRATION).orElseThrow().average());
+        assertEquals(30, item.value(CombatStat.PENETRATION_PERCENT).orElseThrow().average());
         assertEquals(12, item.value(CombatStat.MOVEMENT_SPEED).orElseThrow().average());
         assertEquals(3, item.value(CombatStat.LIFESTEAL).orElseThrow().average());
     }
 
     @Test
-    void appliesPercentageThenFlatPenetrationToOnlyTheMatchingDefense() {
+    void ignoresRemovedPhysicalAndMagicPenetrationLabels() {
+        var parser = new CombatLoreParser(new CombatSettings(false, new EnumMap<>(CombatStat.class)));
+        var item = parser.parse(List.of(
+                "物理穿透: +100", "物理穿透: +30%", "法术穿透: +20", "法术穿透: +15%"
+        ));
+        assertTrue(item.invalidLines().isEmpty());
+        assertTrue(item.values().isEmpty());
+        assertEquals(1, parser.parse(List.of("穿透值: +30%")).invalidLines().size());
+    }
+
+    @Test
+    void appliesSharedRateThenValueToEachMatchingDefense() {
         var attacker = CombatStatsSnapshot.builder()
-                .attribute(CombatStat.PHYSICAL_PENETRATION, new NumericRange(100, 100, false))
-                .attribute(CombatStat.PHYSICAL_PENETRATION_PERCENT, new NumericRange(30, 30, true))
+                .attribute(CombatStat.PENETRATION, new NumericRange(100, 100, false))
+                .attribute(CombatStat.PENETRATION_PERCENT, new NumericRange(30, 30, true))
                 .build();
         var defender = CombatStatsSnapshot.builder()
                 .attribute(CombatStat.PHYSICAL_DEFENSE, new NumericRange(500, 500, false))
@@ -44,14 +53,14 @@ class CombatAttributesTest {
                 .build();
         assertEquals(1000.0 * 600 / 850,
                 CombatFormula.applyDefense(1000, attacker, defender, CombatDamageType.PHYSICAL, 600), 1e-9);
-        assertEquals(500,
+        assertEquals(1000.0 * 600 / 920,
                 CombatFormula.applyDefense(1000, attacker, defender, CombatDamageType.MAGIC, 600), 1e-9);
     }
 
     @Test
     void preservesLegacyPercentageDefenseAndClampsExcessPenetrationAtZeroDefense() {
         var attacker = CombatStatsSnapshot.builder()
-                .attribute(CombatStat.PHYSICAL_PENETRATION, new NumericRange(1000, 1000, false)).build();
+                .attribute(CombatStat.PENETRATION, new NumericRange(1000, 1000, false)).build();
         var numeric = CombatStatsSnapshot.builder()
                 .attribute(CombatStat.PHYSICAL_DEFENSE, new NumericRange(100, 100, false)).build();
         var legacy = CombatStatsSnapshot.builder().hasDefense(true).defensePercent(20).build();

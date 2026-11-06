@@ -34,24 +34,33 @@ public final class MemberAccessService {
     );
 
     private final MemberService memberships;
-    private final Function<Player, PlayerNameStyle> nameStyleResolver;
+    private final Function<Player, PlayerNameStyle> permissionStyleResolver;
 
     public MemberAccessService(DreamRPGContext context) {
         this.memberships = context.membership().service();
         if (!Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
-            this.nameStyleResolver = this::memberNameStyle;
+            this.permissionStyleResolver = player -> new PlayerNameStyle("");
             return;
         }
         LuckPermsNameStyles luckPerms = new LuckPermsNameStyles(LuckPermsProvider.get());
-        this.nameStyleResolver = player -> luckPerms.resolve(
+        this.permissionStyleResolver = player -> luckPerms.resolve(
                 player,
                 STAFF_GROUP,
-                () -> this.memberNameStyle(player)
+                () -> new PlayerNameStyle("")
         );
     }
 
     public String prefix(Player player) {
-        return this.nameStyleResolver.apply(player).prefix();
+        String permissionPrefix = permissionPrefix(player);
+        return permissionPrefix.isEmpty() ? memberSuffix(player) : permissionPrefix;
+    }
+
+    public String permissionPrefix(Player player) {
+        return permissionStyleResolver.apply(player).prefix();
+    }
+
+    public String memberSuffix(Player player) {
+        return memberNameStyle(player).prefix();
     }
 
     public boolean hasVipPlus(Player player) {

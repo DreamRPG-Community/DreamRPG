@@ -71,7 +71,12 @@ public final class CampaignMenus {
             player.sendMessage("§c该NPC当前不可用, 请重新选择。");
             return;
         }
-        menus.open(player, new OfferMenu(npc.name(), () -> catalog.placementsForNpc(npcId)));
+        if (catalog.usesMerchant(npcId)) {
+            exchanges.openMerchant(player, npcId, npc.name());
+        } else {
+            menus.open(player, new OfferMenu(npc.name(), () -> catalog.usesMerchant(npcId)
+                    ? List.of() : catalog.placementsForNpc(npcId)));
+        }
     }
 
     public void openNpcEditor(Player player, UUID npcId) {
@@ -96,6 +101,7 @@ public final class CampaignMenus {
         private List<ExchangeOffer> sortingSlots;
         private String sortSession;
         private boolean sortSaving;
+        private boolean modeSaving;
 
         private NpcEditor(UUID npc, String name) {
             this.npc = npc;
@@ -135,14 +141,21 @@ public final class CampaignMenus {
             if (window.hasPrevious()) inventory.setItem(45, MenuItems.button(Material.ARROW, "&a上一页", List.of()));
             if (window.hasNext()) inventory.setItem(50, MenuItems.button(Material.ARROW, "&a下一页", List.of()));
             if (sortingSlots == null) {
-                inventory.setItem(52, MenuItems.button(Material.SLIME_BALL, "&a调整顺序", List.of(
+                inventory.setItem(51, MenuItems.button(Material.SLIME_BALL, "&a调整顺序", List.of(
                         "&7调整当前NPC的项目位置", " ", "&e点击编辑!"
                 )));
             } else {
-                inventory.setItem(52, MenuItems.button(Material.MAGMA_CREAM, "&a确认顺序", List.of(
+                inventory.setItem(51, MenuItems.button(Material.MAGMA_CREAM, "&a确认顺序", List.of(
                         "&7点击项目后放到新的位置", " ", "&e点击确认!"
                 )));
             }
+            boolean merchant = catalog.usesMerchant(npc);
+            inventory.setItem(52, MenuItems.button(Material.BOOK, "&a兑换模式", List.of(
+                    "&7选择 NPC 的兑换界面", " ",
+                    merchant ? "&7  兑换菜单" : "&a▶ 兑换菜单",
+                    merchant ? "&a▶ 原版村民商店" : "&7  原版村民商店",
+                    " ", "&e左键切换!"
+            )));
             inventory.setItem(53, MenuItems.button(Material.BOOK, "&a新增项目", List.of(
                     "&7选择要新增的项目类型", " ",
                     newTask ? "&a▶ 主线任务" : "&7  主线任务",
@@ -158,10 +171,14 @@ public final class CampaignMenus {
                 return;
             }
             int slot = event.getRawSlot();
-            if (sortSaving) return;
-            if (slot == 52 && event.getClick() == ClickType.LEFT) {
+            if (sortSaving || modeSaving) return;
+            if (slot == 51 && event.getClick() == ClickType.LEFT) {
                 if (sortingSlots == null) beginSort(player);
                 else confirmSort(player, event);
+                return;
+            }
+            if (slot == 52 && sortingSlots == null) {
+                if (event.getClick() == ClickType.LEFT) applyMode(player, event);
                 return;
             }
             if (slot == 53 && sortingSlots == null) {
@@ -200,6 +217,34 @@ public final class CampaignMenus {
             if (event.getClick() == ClickType.LEFT) editor.open(player, offer, this::reopen);
             if (event.getClick() == ClickType.RIGHT)
                 menus.open(player, new DeleteConfirmation(this, offer, catalog.isTask(offer.id())));
+        }
+
+        private void applyMode(Player player, InventoryClickEvent event) {
+            boolean merchant = !catalog.usesMerchant(npc);
+            if (merchant) {
+                try {
+                    List<ExchangeOffer> offers = catalog.offersForNpc(npc);
+                    CampaignCatalog.validateMerchantShape(offers);
+                    for (ExchangeOffer offer : offers) ItemExchangeService.merchantRecipe(plugin.items(), offer);
+                } catch (IllegalArgumentException error) {
+                    player.sendMessage("§c无法切换: " + error.getMessage());
+                    return;
+                }
+            }
+            modeSaving = true;
+            var holder = event.getView().getTopInventory().getHolder();
+            catalog.saveMerchantMode(npc, merchant).whenComplete((ignored, error) -> {
+                modeSaving = false;
+                if (error != null) {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to save NPC exchange mode " + npc, error);
+                    if (player.isOnline()) player.sendMessage("§c兑换模式保存失败, 请重新打开后重试。");
+                } else {
+                    if (player.isOnline()) player.sendMessage("§a兑换模式已保存。");
+                }
+                if (player.isOnline() && player.getOpenInventory().getTopInventory().getHolder() == holder) {
+                    menus.refresh(player);
+                }
+            });
         }
 
         private void beginSort(Player player) {
@@ -369,9 +414,13 @@ public final class CampaignMenus {
             var holder = event.getView().getTopInventory().getHolder();
             catalog.deleteOffer(offer, task).whenComplete((ignored, failure) -> {
                 if (failure != null) {
-                    plugin.getLogger()
-                            .log(java.util.logging.Level.SEVERE, "Failed to delete offer " + offer.id(), failure);
-                    if (player.isOnline()) player.sendMessage("§c删除失败, 请查看服务器日志。");
+                    if (failure instanceof IllegalArgumentException && catalog.usesMerchant(offer.npc())) {
+                        if (player.isOnline()) player.sendMessage("§c无法删除: " + failure.getMessage());
+                    } else {
+                        plugin.getLogger()
+                                .log(java.util.logging.Level.SEVERE, "Failed to delete offer " + offer.id(), failure);
+                        if (player.isOnline()) player.sendMessage("§c删除失败, 请查看服务器日志。");
+                    }
                 } else if (player.isOnline()) player.sendMessage("§a已删除。");
                 if (player.isOnline() && player.getOpenInventory().getTopInventory().getHolder() == holder) {
                     parent.reopen(player);
@@ -435,6 +484,7 @@ public final class CampaignMenus {
             int offset = CONTENT_SLOTS.indexOf(slot);
             int index = offset < 0 ? -1 : page * CONTENT_SLOTS.size() + offset;
             if (index < 0 || index >= rendered.size() || rendered.get(index) == null) return;
+            if (offers.get().isEmpty()) return;
             if (event.getClick() == ClickType.LEFT) exchanges.submit(player, rendered.get(index), false);
             if (event.getClick() == ClickType.SHIFT_LEFT) exchanges.submit(player, rendered.get(index), true);
         }

@@ -35,8 +35,8 @@ class CombatStatsDisplayTest {
                         "  §d§l法术攻击: §2§l0",
                         "  §6§l物理防御: §2§l100%",
                         "  §d§l法术防御: §2§l100%",
-                        "  §f§l物理穿透: §2§l0 / 0%",
-                        "  §f§l法术穿透: §2§l0 / 0%",
+                        "  §f§l穿透值: §2§l0",
+                        "  §f§l穿透率: §2§l0%",
                         "  §c§l暴击几率: §2§l0%",
                         "  §4§l暴击伤害: §2§l150%",
                         "  §a§l生命回复: §2§l100%",
@@ -50,10 +50,8 @@ class CombatStatsDisplayTest {
     @Test
     void displaysPenetrationValuesAndPercentageOnlyHealthRegen() {
         CombatStatsSnapshot stats = CombatStatsSnapshot.builder()
-                .attribute(CombatStat.PHYSICAL_PENETRATION, new NumericRange(12, 12, false))
-                .attribute(CombatStat.PHYSICAL_PENETRATION_PERCENT, new NumericRange(30, 30, true))
-                .attribute(CombatStat.MAGIC_PENETRATION, new NumericRange(5, 5, false))
-                .attribute(CombatStat.MAGIC_PENETRATION_PERCENT, new NumericRange(10, 10, true))
+                .attribute(CombatStat.PENETRATION, new NumericRange(12, 12, false))
+                .attribute(CombatStat.PENETRATION_PERCENT, new NumericRange(30, 30, true))
                 .attribute(CombatStat.LIFESTEAL, new NumericRange(4, 4, true))
                 .attribute(CombatStat.MOVEMENT_SPEED, new NumericRange(7.5, 7.5, true))
                 .build();
@@ -67,8 +65,8 @@ class CombatStatsDisplayTest {
                         "  §d§l法术攻击: §2§l0",
                         "  §6§l物理防御: §2§l0",
                         "  §d§l法术防御: §2§l0",
-                        "  §f§l物理穿透: §2§l12 / 30%",
-                        "  §f§l法术穿透: §2§l5 / 10%",
+                        "  §f§l穿透值: §2§l12",
+                        "  §f§l穿透率: §2§l30%",
                         "  §c§l暴击几率: §2§l0%",
                         "  §4§l暴击伤害: §2§l150%",
                         "  §a§l生命回复: §2§l0%",

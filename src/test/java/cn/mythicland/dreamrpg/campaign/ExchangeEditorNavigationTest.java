@@ -3,6 +3,7 @@ package cn.mythicland.dreamrpg.campaign;
 import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.DreamRPGPlugin;
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
+import cn.mythicland.dreamrpg.exchange.ExchangeType;
 import cn.mythicland.dreamrpgitems.api.MythicItemDetails;
 import cn.mythicland.dreamrpgitems.api.MythicItemIdentity;
 import cn.mythicland.dreamrpgitems.service.MythicItemService;
@@ -34,6 +35,17 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class ExchangeEditorNavigationTest {
+    @Test
+    void displayTypeControlSavesWithoutMovingTheOfferIntoMainlineTasks() {
+        try (Fixture fixture = new Fixture()) {
+            InventoryClickEvent typeClick = fixture.click(47);
+            fixture.editor.onClick(typeClick);
+            verify(typeClick).setCancelled(true);
+            fixture.save();
+            verify(fixture.catalog).saveOffer(isNull(), argThat(offer -> offer.type() == ExchangeType.UPGRADE), isNull());
+        }
+    }
+
     @Test
     void keepsEditorOpenWhileSavingAndReturnsDirectlyWhenSaved() {
         try (Fixture fixture = new Fixture()) {

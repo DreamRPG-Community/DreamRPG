@@ -18,10 +18,13 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MerchantInventory;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -43,6 +46,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
     private final Set<UUID> readySessions = ConcurrentHashMap.newKeySet();
     private final Map<UUID, CompletableFuture<PlayerStorageSnapshot>> loads = new ConcurrentHashMap<>();
     private final Map<UUID, CompletableFuture<Void>> saveChains = new ConcurrentHashMap<>();
+    private final Map<UUID, MerchantInventory> openMerchants = new HashMap<>();
     private BukkitTask autosaveTask;
     private boolean closed;
 
@@ -138,7 +142,7 @@ public final class PlayerStorageService implements PlayerStorageApi {
         VersionedPlayerSession<PlayerStorageSnapshot> session = session(target.getUniqueId());
         PlayerInventory inventory = target.getInventory();
         PlayerStorageSnapshot snapshot = session.snapshot().withPlayerInventory(
-                inventory.getStorageContents(),
+                capturedContents(target),
                 inventory.getArmorContents(),
                 inventory.getItemInOffHand(),
                 inventory.getHeldItemSlot()
@@ -146,6 +150,35 @@ public final class PlayerStorageService implements PlayerStorageApi {
         session.replace(snapshot.withVitals(new PlayerVitals(
                 target.getHealth(), target.getFoodLevel(), target.getSaturation(), target.getExhaustion()
         )));
+    }
+
+    public void trackMerchant(Player player, MerchantInventory inventory) {
+        openMerchants.put(player.getUniqueId(), inventory);
+    }
+
+    public void untrackMerchant(Player player) {
+        openMerchants.remove(player.getUniqueId());
+    }
+
+    private ItemStack[] capturedContents(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getStorageContents();
+        MerchantInventory merchant = openMerchants.get(player.getUniqueId());
+        if (merchant == null || !merchant.equals(player.getOpenInventory().getTopInventory())) return contents;
+        List<ItemStack> held = Stream.of(merchant.getItem(0), merchant.getItem(1), player.getItemOnCursor())
+                .filter(item -> item != null && item.getType() != Material.AIR && item.getAmount() > 0)
+                .map(ItemStack::clone).toList();
+        if (held.isEmpty()) return contents;
+
+        // Persist the inventory as if the merchant closed, without moving live items or saving the preview.
+        var snapshot = Bukkit.createInventory(null, contents.length);
+        snapshot.setStorageContents(Arrays.stream(contents)
+                .map(item -> item == null ? null : item.clone()).toArray(ItemStack[]::new));
+        if (snapshot.addItem(held.toArray(ItemStack[]::new)).isEmpty()) return snapshot.getStorageContents();
+
+        // If the items cannot all fit, use Vanilla's return/drop behavior before taking the snapshot.
+        player.closeInventory();
+        return inventory.getStorageContents();
     }
 
     /**

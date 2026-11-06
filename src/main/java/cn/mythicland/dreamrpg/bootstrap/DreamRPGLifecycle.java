@@ -9,6 +9,7 @@ import cn.mythicland.dreamrpg.health.HealthProgressionService;
 import cn.mythicland.dreamrpg.profile.PlayerProfileService;
 import cn.mythicland.dreamrpg.starter.FirstJoinRewardService;
 import cn.mythicland.dreamrpg.storage.PlayerStorageService;
+import cn.mythicland.dreamrpg.trade.PlayerTradeService;
 import cn.mythicland.framework.bukkit.task.PluginTaskScope;
 import cn.mythicland.framework.component.LifecycleComponent;
 import cn.mythicland.framework.component.ManagedLifecycle;
@@ -34,6 +35,7 @@ public final class DreamRPGLifecycle implements ManagedLifecycle {
     private final HealthProgressionService health;
     private final EnderChestService enderChest;
     private final FirstJoinRewardService firstJoinRewards;
+    private final PlayerTradeService trades;
     private BukkitTask scoreboardTask;
     private BukkitTask titleTask;
 
@@ -60,7 +62,8 @@ public final class DreamRPGLifecycle implements ManagedLifecycle {
             ExperienceService experience,
             HealthProgressionService health,
             EnderChestService enderChest,
-            FirstJoinRewardService firstJoinRewards
+            FirstJoinRewardService firstJoinRewards,
+            PlayerTradeService trades
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.tasks = Objects.requireNonNull(tasks, "tasks");
@@ -72,6 +75,7 @@ public final class DreamRPGLifecycle implements ManagedLifecycle {
         this.health = Objects.requireNonNull(health, "health");
         this.enderChest = Objects.requireNonNull(enderChest, "enderChest");
         this.firstJoinRewards = Objects.requireNonNull(firstJoinRewards, "firstJoinRewards");
+        this.trades = Objects.requireNonNull(trades, "trades");
     }
 
     private static RuntimeException appendFailure(RuntimeException current, RuntimeException next) {
@@ -88,6 +92,7 @@ public final class DreamRPGLifecycle implements ManagedLifecycle {
         firstJoinRewards.start();
         experience.start();
         storage.start();
+        trades.start();
         restartDisplayTasks();
         display.refreshAll();
         plugin.getLogger().info("DreamRPG enabled.");
@@ -136,9 +141,14 @@ public final class DreamRPGLifecycle implements ManagedLifecycle {
         titleTask = null;
         RuntimeException failure = null;
         try {
-            enderChest.close();
+            trades.close();
         } catch (RuntimeException exception) {
             failure = exception;
+        }
+        try {
+            enderChest.close();
+        } catch (RuntimeException exception) {
+            failure = appendFailure(failure, exception);
         }
         try {
             firstJoinRewards.close();

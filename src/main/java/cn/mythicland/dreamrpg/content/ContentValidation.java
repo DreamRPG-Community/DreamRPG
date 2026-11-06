@@ -1,6 +1,7 @@
 package cn.mythicland.dreamrpg.content;
 
 import cn.mythicland.dreamrpg.campaign.CampaignCatalog;
+import cn.mythicland.dreamrpg.title.TitleCatalog;
 import cn.mythicland.framework.bukkit.content.ContentWorkspace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -83,6 +84,7 @@ final class ContentValidation {
         }
         Path plugins = content.root().getParent();
         CampaignCatalog.validateContent(content);
+        TitleCatalog.validateContent(content);
         cn.mythicland.dreamworldregion.WorldRegionDataStore.validateContent(content);
         var npcFile = plugins.resolve("DreamNPC/npcs.yml");
         var npcSection = ContentWorkspace.readYaml(npcFile).getConfigurationSection("npcs");

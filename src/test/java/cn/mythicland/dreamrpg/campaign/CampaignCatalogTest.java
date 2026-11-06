@@ -1,17 +1,98 @@
 package cn.mythicland.dreamrpg.campaign;
 
 import cn.mythicland.dreamrpg.exchange.ExchangeOffer;
+import cn.mythicland.dreamrpg.exchange.ExchangeType;
 import cn.mythicland.dreamrpg.exchange.ItemAmount;
+import cn.mythicland.dreamrpg.exchange.ItemExchangeService;
+import cn.mythicland.dreamrpgitems.api.DreamRPGItemApi;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CampaignCatalogTest {
     private static final UUID NPC = UUID.fromString("72a62f0f-a93a-3a40-a581-b05f345f94d1");
+
+    @Test
+    void merchantModeDefaultsToCustomAndRoundTripsPerNpc() throws Exception {
+        var yaml = new YamlConfiguration();
+        assertTrue(CampaignCatalog.parseMerchantNpcs(yaml).isEmpty());
+        String mode = "exchange-modes." + NPC;
+        yaml.set(mode, "merchant");
+        var reloaded = new YamlConfiguration();
+        reloaded.loadFromString(yaml.saveToString());
+        assertEquals(Set.of(NPC), CampaignCatalog.parseMerchantNpcs(reloaded));
+        reloaded.set(mode, "typo");
+        assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parseMerchantNpcs(reloaded));
+        reloaded.set(mode, null);
+        assertTrue(CampaignCatalog.parseMerchantNpcs(reloaded).isEmpty());
+    }
+
+    @Test
+    void merchantModeRejectsProjectsThatCannotFitNativeRecipes() {
+        var cost = new ItemAmount("copper", 1);
+        var reward = new ItemAmount("sword", 1);
+        var valid = new ExchangeOffer("sword", NPC, List.of(cost, cost), reward);
+        var invalid = new ExchangeOffer("sword", NPC, List.of(cost, new ItemAmount("iron", 1), new ItemAmount("gold", 1)), reward);
+        var task = new ExchangeOffer("sword", NPC, List.of(cost), reward, ExchangeType.TASK);
+        assertDoesNotThrow(() -> CampaignCatalog.validateMerchantShape(List.of(valid, task)));
+        assertThrows(IllegalArgumentException.class,
+                () -> CampaignCatalog.validateMerchantShape(List.of(invalid)));
+        assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.validateMerchantShape(List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> CampaignCatalog.validateMerchantShape(Collections.nCopies(256, valid)));
+    }
+
+    @Test
+    void merchantRecipeCombinesRepeatedCostsAndSplitsAtActualStackLimit() {
+        var items = mock(DreamRPGItemApi.class);
+        when(items.getItemStack("copper", 1))
+                .thenAnswer(ignored -> new ItemStack(Material.IRON_INGOT));
+        when(items.getItemStack("sword", 1))
+                .thenAnswer(ignored -> new ItemStack(Material.IRON_SWORD));
+        var offer = new ExchangeOffer("sword", NPC, List.of(new ItemAmount("copper", 48),
+                new ItemAmount("copper", 16), new ItemAmount("copper", 16)), new ItemAmount("sword", 1));
+        var recipe = ItemExchangeService.merchantRecipe(items, offer);
+        assertEquals(List.of(64, 16), recipe.getIngredients().stream().map(i -> i.getAmount()).toList());
+        var tooMany = new ExchangeOffer("sword", NPC, List.of(new ItemAmount("copper", 129)), offer.reward());
+        assertThrows(IllegalArgumentException.class,
+                () -> ItemExchangeService.merchantRecipe(items, tooMany));
+    }
+
+    @Test
+    void displayTypesRoundTripWithoutChangingCostsRewardsOrTaskPlacement() throws Exception {
+        var yaml = stages();
+        ExchangeOffer original = CampaignCatalog.parse(yaml).getFirst().tasks().getFirst();
+        assertEquals(ExchangeType.TASK, original.type());
+        for (ExchangeType type : ExchangeType.values()) {
+            var replacement = new ExchangeOffer(original.id(), NPC, original.requires(), original.reward(), type);
+            CampaignCatalog.changeYaml(yaml, original, replacement, true, "origin");
+            var reloaded = new YamlConfiguration();
+            reloaded.loadFromString(yaml.saveToString());
+            original = CampaignCatalog.parse(reloaded).getFirst().tasks().getFirst();
+            assertEquals(replacement, original);
+            assertEquals("origin_book", original.requires().getFirst().item());
+            assertEquals("daily_life_book", original.reward().item());
+        }
+    }
+
+    @Test
+    void rejectsUnknownAndNonTextDisplayTypes() throws Exception {
+        for (Object invalid : List.of("invalid", "", 1, List.of("task"))) {
+            var yaml = stages();
+            yaml.set("stages.origin.tasks.story_origin.type", invalid);
+            assertThrows(IllegalArgumentException.class, () -> CampaignCatalog.parse(yaml));
+        }
+    }
 
     @Test
     void editingAnExchangeKeepsItsOwnerAndRejectsStaleData() throws Exception {
@@ -100,6 +181,7 @@ class CampaignCatalogTest {
                 """);
         var groups = CampaignCatalog.parseGroups(yaml);
         ExchangeOffer offer = groups.getFirst().offers().getFirst();
+        assertEquals(ExchangeType.EXCHANGE, offer.type());
         assertEquals(NPC, offer.npc());
         assertEquals(10, offer.requires().getFirst().amount());
         assertEquals(1, offer.reward().amount());
@@ -154,7 +236,7 @@ class CampaignCatalogTest {
         var loaded = new YamlConfiguration();
         loaded.loadFromString(yaml.saveToString());
         assertEquals(List.of(offer), CampaignCatalog.parse(loaded).getFirst().tasks());
-        assertEquals(java.util.Set.of("tasks"), loaded.getConfigurationSection("stages." + CampaignCatalog.NPC_TASK_STAGE).getKeys(false));
+        assertEquals(Set.of("tasks"), loaded.getConfigurationSection("stages." + CampaignCatalog.NPC_TASK_STAGE).getKeys(false));
     }
 
     private static YamlConfiguration stages() throws Exception {

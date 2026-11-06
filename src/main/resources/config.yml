@@ -9,14 +9,14 @@ spawn:
   teleport-on-join: true
   teleport-on-respawn: true
 chat:
-  format: '{member_prefix} {prefix} {name}&7: &f{message}'
+  format: '{lp_prefix} {title} {prefix} {name} {member_prefix}&7: &f{message}'
   color-permission: dreamrpg.chat.color
 display:
   tab:
     header: []
     footer: []
-    player-name-format: '{member_prefix} {prefix} {name}        '
-  name-tag-format: '{member_prefix} {prefix} {name}'
+    player-name-format: '{lp_prefix} {title} {prefix} {name} {member_prefix}        '
+  name-tag-format: '{lp_prefix} {title} {prefix} {name} {member_prefix}'
 combat-feedback: false
 messages:
   critical-hit: '&c&l暴击! &f你造成了&c{damage}&f点伤害!'
@@ -32,8 +32,8 @@ labels:
   magic-damage: 法术攻击
   physical-defense: 物理防御
   magic-defense: 法术防御
-  physical-penetration: 物理穿透
-  magic-penetration: 法术穿透
+  penetration: 穿透值
+  penetration-percent: 穿透率
   movement-speed: 移动速度
   lifesteal: 嗜血
   level-requirement: 需要等级

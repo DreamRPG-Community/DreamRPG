@@ -3,6 +3,10 @@ package cn.mythicland.dreamrpg.display;
 import cn.mythicland.dreamlib.api.DreamLibApi;
 import cn.mythicland.dreamrpg.api.CoinService;
 import cn.mythicland.dreamrpg.api.PlayerProfile;
+import cn.mythicland.dreamrpg.api.TitleApi;
+import cn.mythicland.dreamrpg.api.TitleDefinition;
+import cn.mythicland.dreamrpg.event.EquippedTitleChangedEvent;
+import cn.mythicland.framework.bukkit.component.ListenerComponent;
 import cn.mythicland.dreamrpg.bootstrap.DreamRPGContext;
 import cn.mythicland.dreamrpg.config.DreamRPGSettings;
 import cn.mythicland.dreamrpg.config.ScoreboardSettings;
@@ -29,6 +33,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Team;
 
@@ -36,7 +42,8 @@ import org.bukkit.scoreboard.Team;
  * Owns DreamRPG player presentation, TAB/head teams, and the standalone sidebar scoreboard.
  */
 @InjectComponent
-public final class DreamRPGDisplayService implements AutoCloseable {
+@ListenerComponent
+public final class DreamRPGDisplayService implements AutoCloseable, Listener {
 
     private static final DateTimeFormatter CLOCK_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
     private static final double HEALTH_DISPLAY_SCALE = 40.0D;
@@ -50,9 +57,11 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     private final PlayerPointsService points;
     private final WorldLocationService locations;
     private final PlayerLoadingGate loadingGate;
+    private final TitleApi titles;
     private final Map<UUID, ScoreboardSession> sessions = new HashMap<>();
     private final Map<UUID, TabHeaderFooter> tabHeaderFooters = new HashMap<>();
     private final Map<UUID, String> memberPrefixes = new HashMap<>();
+    private final Map<UUID, String> permissionPrefixes = new HashMap<>();
     private final Set<String> nameTagOverflowWarnings = new HashSet<>();
     private ScoreboardSettings settings;
     private DreamRPGSettings.DisplaySettings displaySettings;
@@ -75,7 +84,8 @@ public final class DreamRPGDisplayService implements AutoCloseable {
             MemberAccessService members,
             CoinService coins,
             WorldLocationService locations,
-            PlayerLoadingGate loadingGate
+            PlayerLoadingGate loadingGate,
+            TitleApi titles
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         DreamRPGContext initializedContext = Objects.requireNonNull(context, "context");
@@ -87,6 +97,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         this.points = this.lib.playerPointsService();
         this.locations = Objects.requireNonNull(locations, "locations");
         this.loadingGate = Objects.requireNonNull(loadingGate, "loadingGate");
+        this.titles = Objects.requireNonNull(titles, "titles");
         this.settings = initializedContext.scoreboard();
         this.displaySettings = initializedContext.settings().display();
         this.animationTick = 0L;
@@ -158,7 +169,8 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         for (Player player : onlinePlayers) {
             PlayerProfile profile = profiles.getProfile(player.getUniqueId());
             onlineProfiles.put(player.getUniqueId(), profile);
-            memberPrefixes.put(player.getUniqueId(), members.prefix(player));
+            memberPrefixes.put(player.getUniqueId(), members.memberSuffix(player));
+            permissionPrefixes.put(player.getUniqueId(), members.permissionPrefix(player));
             applyHealthDisplayScale(player);
             applyPlayerName(player, profile);
         }
@@ -253,6 +265,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         ScoreboardSession session = sessions.remove(player.getUniqueId());
         if (session != null) session.close();
         memberPrefixes.remove(player.getUniqueId());
+        permissionPrefixes.remove(player.getUniqueId());
         clearPlayerPresentation(player);
         refreshAll();
     }
@@ -269,12 +282,18 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         }
         tabHeaderFooters.clear();
         memberPrefixes.clear();
+        permissionPrefixes.clear();
         closeScoreboardSessions();
     }
 
     private String renderTitle(Player viewer) {
         String title = settings.normal().titleAnimation().frameAt(animationTick).text();
         return templates.render(title, viewer, renderValues(viewer, title));
+    }
+
+    @EventHandler
+    public void onTitleChanged(EquippedTitleChangedEvent event) {
+        refreshAll();
     }
 
     private List<String> renderLines(Player viewer) {
@@ -319,7 +338,9 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         values.put("career", profile.career().displayName());
         values.put("career_id", profile.careerId());
         values.put("prefix", profile.career().prefix());
+        values.put("title", titles.equipped(viewer.getUniqueId()).map(TitleDefinition::displayName).orElse(""));
         values.put("member_prefix", memberPrefixes.getOrDefault(viewer.getUniqueId(), "&7[玩家]"));
+        values.put("lp_prefix", permissionPrefixes.getOrDefault(viewer.getUniqueId(), ""));
         if (template.contains("{time}")) {
             values.put(
                     "time",
@@ -342,7 +363,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     }
 
     private String renderPlayerListName(Player player, PlayerProfile profile) {
-        String template = withMemberPrefix(displaySettings.tab().playerNameFormat());
+        String template = nameFormat(displaySettings.tab().playerNameFormat(), player);
         String coloredName = profile.career().nameColor() + player.getName();
         return templates.render(
                 template,
@@ -352,7 +373,7 @@ public final class DreamRPGDisplayService implements AutoCloseable {
     }
 
     private NameTagParts renderNameTag(Player player, PlayerProfile profile) {
-        String template = withMemberPrefix(displaySettings.nameTagFormat());
+        String template = displaySettings.nameTagFormat().replace("%luckperms_prefix%", "{lp_prefix}");
         String markerName = profile.career().nameColor() + NAME_TAG_MARKER;
         String rendered = templates.render(
                 template,
@@ -433,6 +454,8 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         values.put("player", viewer.getName());
         values.put("name", viewer.getName());
         values.put("member_prefix", memberPrefixes.getOrDefault(viewer.getUniqueId(), "&7[玩家]"));
+        values.put("lp_prefix", permissionPrefixes.getOrDefault(viewer.getUniqueId(), ""));
+        values.put("title", titles.equipped(viewer.getUniqueId()).map(TitleDefinition::displayName).orElse(""));
         if (template.contains("{time}")) {
             values.put(
                     "time",
@@ -456,10 +479,9 @@ public final class DreamRPGDisplayService implements AutoCloseable {
         applyTabHeaderFooter(player, profile);
     }
 
-    private static String withMemberPrefix(String template) {
-        String resolved = template.replace("%luckperms_prefix%", "{member_prefix}");
-        if (resolved.contains("{member_prefix}")) return resolved;
-        return "{member_prefix} " + resolved;
+    private String nameFormat(String template, Player player) {
+        return PlayerNameFormat.ordered(template, titles.equipped(player.getUniqueId()).isPresent(),
+                !permissionPrefixes.getOrDefault(player.getUniqueId(), "").isEmpty());
     }
 
     private void clearPlayerPresentation(Player player) {

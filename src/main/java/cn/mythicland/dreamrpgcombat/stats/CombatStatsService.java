@@ -25,6 +25,7 @@ public final class CombatStatsService {
     private final JavaPlugin plugin;
     private final Function<UUID, OptionalLong> rpgLevelResolver;
     private final DreamRPGHealthResolver rpgHealthResolver;
+    private final Function<UUID, CombatItemStats> titleBonusResolver;
     private final Map<String, Long> warningTimes = new HashMap<>();
     private volatile CombatLoreParser parser;
     private volatile CombatSettings settings;
@@ -63,10 +64,30 @@ public final class CombatStatsService {
             Function<UUID, OptionalLong> rpgLevelResolver,
             DreamRPGHealthResolver rpgHealthResolver
     ) {
+        this(plugin, settings, rpgLevelResolver, rpgHealthResolver, ignored -> new CombatItemStats(Map.of(), List.of()));
+    }
+
+    /**
+     * Creates the main-thread attribute service with the equipped-title contribution.
+     *
+     * @param plugin             owning plugin
+     * @param settings           immutable combat settings
+     * @param rpgLevelResolver   optional player level resolver
+     * @param rpgHealthResolver  optional player health resolver
+     * @param titleBonusResolver resolver returning unrestricted attributes for a player, empty when unequipped
+     */
+    public CombatStatsService(
+            JavaPlugin plugin,
+            CombatSettings settings,
+            Function<UUID, OptionalLong> rpgLevelResolver,
+            DreamRPGHealthResolver rpgHealthResolver,
+            Function<UUID, CombatItemStats> titleBonusResolver
+    ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.settings = Objects.requireNonNull(settings, "settings");
         this.rpgLevelResolver = rpgLevelResolver;
         this.rpgHealthResolver = rpgHealthResolver;
+        this.titleBonusResolver = Objects.requireNonNull(titleBonusResolver, "titleBonusResolver");
         this.parser = new CombatLoreParser(settings);
     }
 
@@ -124,7 +145,7 @@ public final class CombatStatsService {
         attributes.forEach((stat, value) -> {
             double minimum = stat == CombatStat.MOVEMENT_SPEED ? -100 : 0;
             boolean bounded = stat == CombatStat.MOVEMENT_SPEED || stat == CombatStat.LIFESTEAL
-                    || stat == CombatStat.PHYSICAL_PENETRATION_PERCENT || stat == CombatStat.MAGIC_PENETRATION_PERCENT;
+                    || stat == CombatStat.PENETRATION_PERCENT;
             if (bounded) {
                 double effective = Math.clamp(value.average(), minimum, 100);
                 builder.attribute(stat, new NumericRange(effective, effective, value.percent()));
@@ -204,6 +225,7 @@ public final class CombatStatsService {
         HealthSnapshot rpgHealth = levelGateEnabled && entity instanceof Player player
                 ? resolveRpgHealth(player).orElse(null)
                 : null;
+        if (entity instanceof Player player) itemStats.add(titleBonusResolver.apply(player.getUniqueId()));
         return aggregate(itemStats, rpgHealth);
     }
 
@@ -223,6 +245,13 @@ public final class CombatStatsService {
 
     public List<String> debug(Player player) {
         List<String> lines = new ArrayList<>();
+        CombatItemStats title = titleBonusResolver.apply(player.getUniqueId());
+        if (!title.values().isEmpty()) {
+            lines.add("佩戴称号:");
+            for (CombatStat stat : CombatStat.values()) {
+                title.value(stat).ifPresent(value -> lines.add("  " + settings.label(stat) + " = " + describe(value)));
+            }
+        }
         EntityEquipment equipment = Objects.requireNonNull(player, "player").getEquipment();
         List<EquipmentEntry> entries = List.of(
                 new EquipmentEntry("主手", equipment.getItemInMainHand()),

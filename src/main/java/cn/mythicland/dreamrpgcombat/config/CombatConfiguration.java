@@ -50,10 +50,8 @@ public final class CombatConfiguration implements ConfigurableComponent {
         labels.put(CombatStat.MAGIC_DAMAGE, visibleLabel(raw.magicDamageLabel(), CombatStat.MAGIC_DAMAGE));
         labels.put(CombatStat.PHYSICAL_DEFENSE, visibleLabel(raw.physicalDefenseLabel(), CombatStat.PHYSICAL_DEFENSE));
         labels.put(CombatStat.MAGIC_DEFENSE, visibleLabel(raw.magicDefenseLabel(), CombatStat.MAGIC_DEFENSE));
-        labels.put(CombatStat.PHYSICAL_PENETRATION, visibleLabel(raw.physicalPenetrationLabel(), CombatStat.PHYSICAL_PENETRATION));
-        labels.put(CombatStat.PHYSICAL_PENETRATION_PERCENT, visibleLabel(raw.physicalPenetrationLabel(), CombatStat.PHYSICAL_PENETRATION_PERCENT));
-        labels.put(CombatStat.MAGIC_PENETRATION, visibleLabel(raw.magicPenetrationLabel(), CombatStat.MAGIC_PENETRATION));
-        labels.put(CombatStat.MAGIC_PENETRATION_PERCENT, visibleLabel(raw.magicPenetrationLabel(), CombatStat.MAGIC_PENETRATION_PERCENT));
+        labels.put(CombatStat.PENETRATION, visibleLabel(raw.penetrationLabel(), CombatStat.PENETRATION));
+        labels.put(CombatStat.PENETRATION_PERCENT, visibleLabel(raw.penetrationRateLabel(), CombatStat.PENETRATION_PERCENT));
         labels.put(CombatStat.MOVEMENT_SPEED, visibleLabel(raw.movementSpeedLabel(), CombatStat.MOVEMENT_SPEED));
         labels.put(CombatStat.LIFESTEAL, visibleLabel(raw.lifestealLabel(), CombatStat.LIFESTEAL));
         snapshot = new CombatSettings(
@@ -161,17 +159,17 @@ public final class CombatConfiguration implements ConfigurableComponent {
             )
             String magicDefenseLabel,
             @ConfigProperty(
-                    path = "labels.physical-penetration",
-                    defaultValue = "物理穿透",
+                    path = "labels.penetration",
+                    defaultValue = "穿透值",
                     nonBlank = true
             )
-            String physicalPenetrationLabel,
+            String penetrationLabel,
             @ConfigProperty(
-                    path = "labels.magic-penetration",
-                    defaultValue = "法术穿透",
+                    path = "labels.penetration-percent",
+                    defaultValue = "穿透率",
                     nonBlank = true
             )
-            String magicPenetrationLabel,
+            String penetrationRateLabel,
             @ConfigProperty(
                     path = "labels.movement-speed",
                     defaultValue = "移动速度",

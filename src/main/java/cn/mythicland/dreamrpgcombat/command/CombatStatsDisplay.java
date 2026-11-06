@@ -1,7 +1,6 @@
 package cn.mythicland.dreamrpgcombat.command;
 
 import cn.mythicland.dreamrpgcombat.api.CombatStatsSnapshot;
-import cn.mythicland.dreamrpgcombat.api.CombatDamageType;
 import cn.mythicland.dreamrpgcombat.combat.CombatFormula;
 import cn.mythicland.dreamrpgcombat.config.CombatSettings;
 import cn.mythicland.dreamrpgcombat.lore.CombatStat;
@@ -26,49 +25,40 @@ public final class CombatStatsDisplay {
         return List.of(
                 colorize("&2&lDream&aRPG &f| &7战斗属性"),
                 colorize("  &f"),
-                valueLine("&4", label(settings, CombatStat.LIFESTEAL, "嗜血"),
+                valueLine(CombatStat.LIFESTEAL, label(settings, CombatStat.LIFESTEAL, "嗜血"),
                         format(stats.value(CombatStat.LIFESTEAL)) + "%"
                 ),
-                valueLine("&a", label(settings, CombatStat.HEALTH, "生命值"), format(stats.totalHealth())),
-                valueLine("&6", label(settings, CombatStat.DAMAGE, "物理攻击"), damageValue(stats)),
-                valueLine("&d", label(settings, CombatStat.MAGIC_DAMAGE, "法术攻击"), magicDamageValue(stats)),
-                valueLine("&6", label(settings, CombatStat.PHYSICAL_DEFENSE, "物理防御"),
+                valueLine(CombatStat.HEALTH, label(settings, CombatStat.HEALTH, "生命值"), format(stats.totalHealth())),
+                valueLine(CombatStat.DAMAGE, label(settings, CombatStat.DAMAGE, "物理攻击"), damageValue(stats)),
+                valueLine(CombatStat.MAGIC_DAMAGE, label(settings, CombatStat.MAGIC_DAMAGE, "法术攻击"), magicDamageValue(stats)),
+                valueLine(CombatStat.PHYSICAL_DEFENSE, label(settings, CombatStat.PHYSICAL_DEFENSE, "物理防御"),
                         defenseValue(stats, CombatStat.PHYSICAL_DEFENSE)
                 ),
-                valueLine("&d", label(settings, CombatStat.MAGIC_DEFENSE, "法术防御"),
+                valueLine(CombatStat.MAGIC_DEFENSE, label(settings, CombatStat.MAGIC_DEFENSE, "法术防御"),
                         defenseValue(stats, CombatStat.MAGIC_DEFENSE)
                 ),
-                penetrationLine(settings, stats, CombatDamageType.PHYSICAL),
-                penetrationLine(settings, stats, CombatDamageType.MAGIC),
-                valueLine("&c", label(settings, CombatStat.CRIT_CHANCE, "暴击几率"),
+                valueLine(CombatStat.PENETRATION, label(settings, CombatStat.PENETRATION, "穿透值"),
+                        format(stats.value(CombatStat.PENETRATION))
+                ),
+                valueLine(CombatStat.PENETRATION_PERCENT, label(settings, CombatStat.PENETRATION_PERCENT, "穿透率"),
+                        format(stats.value(CombatStat.PENETRATION_PERCENT)) + "%"
+                ),
+                valueLine(CombatStat.CRIT_CHANCE, label(settings, CombatStat.CRIT_CHANCE, "暴击几率"),
                         format(stats.critChancePercent()) + "%"
                 ),
-                valueLine("&4", label(settings, CombatStat.CRIT_DAMAGE, "暴击伤害"),
+                valueLine(CombatStat.CRIT_DAMAGE, label(settings, CombatStat.CRIT_DAMAGE, "暴击伤害"),
                         format(CombatFormula.criticalMultiplier(stats, true) * 100) + "%"
                 ),
-                valueLine("&a", label(settings, CombatStat.HEALTH_REGEN, "生命回复"),
+                valueLine(CombatStat.HEALTH_REGEN, label(settings, CombatStat.HEALTH_REGEN, "生命回复"),
                         format(stats.healthRegenPercent()) + "%"
                 ),
-                valueLine("&b", label(settings, CombatStat.MOVEMENT_SPEED, "移动速度"),
+                valueLine(CombatStat.MOVEMENT_SPEED, label(settings, CombatStat.MOVEMENT_SPEED, "移动速度"),
                         format(stats.value(CombatStat.MOVEMENT_SPEED)) + "%"
                 ),
-                valueLine("&b", label(settings, CombatStat.EXPERIENCE_BONUS, "经验加成"),
+                valueLine(CombatStat.EXPERIENCE_BONUS, label(settings, CombatStat.EXPERIENCE_BONUS, "经验加成"),
                         format(stats.experienceBonusPercent()) + "%"
                 ),
                 colorize("  &f")
-        );
-    }
-
-    private static String penetrationLine(
-            CombatSettings settings,
-            CombatStatsSnapshot stats,
-            CombatDamageType type
-    ) {
-        CombatStat flatPenetration = type.flatPenetration();
-        CombatStat percentagePenetration = type.percentagePenetration();
-        return valueLine("&f", label(settings, flatPenetration, flatPenetration.defaultDisplayName()),
-                format(stats.value(flatPenetration)) + " / "
-                        + format(stats.value(percentagePenetration)) + "%"
         );
     }
 
@@ -89,8 +79,8 @@ public final class CombatStatsDisplay {
         return value == null || value.isBlank() ? fallback : value;
     }
 
-    private static String valueLine(String labelColor, String label, String value) {
-        return colorize("  " + labelColor + "&l" + label + ": &2&l" + value);
+    private static String valueLine(CombatStat stat, String label, String value) {
+        return colorize("  " + stat.displayColor() + "&l" + label + ": &2&l" + value);
     }
 
     private static String damageValue(CombatStatsSnapshot stats) {

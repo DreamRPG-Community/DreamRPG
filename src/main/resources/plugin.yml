@@ -10,6 +10,7 @@ depend:
 - ProtocolLib
 - DreamNPC
 - DreamChest
+- DeluxeMenus
 softdepend:
 - PlaceholderAPI
 - Vault
@@ -22,6 +23,10 @@ loadbefore:
 - QuickShop
 description: Shared RPG foundation for the DreamRPG server.
 commands:
+  titles:
+    description: Select titles or manage title definitions and grants.
+    aliases:
+    - ch
   warp:
     description: Travel to a configured RPG location.
     usage: /warp <location>
@@ -29,6 +34,7 @@ commands:
     description: Manage DreamRPG features.
     aliases:
     - drpg
+    - trade
   spawn:
     description: Teleport to the DreamRPG main-city spawn.
   setspawn:

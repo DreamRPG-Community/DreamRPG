@@ -4,6 +4,7 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -16,8 +17,13 @@ public record ExchangeOffer(
         String id,
         UUID npc,
         List<ItemAmount> requires,
-        ItemAmount reward
+        ItemAmount reward,
+        ExchangeType type
 ) {
+    public ExchangeOffer(String id, UUID npc, List<ItemAmount> requires, ItemAmount reward) {
+        this(id, npc, requires, reward, ExchangeType.EXCHANGE);
+    }
+
     public ExchangeOffer {
         if (id == null || !id.matches("[a-z][a-z0-9_-]*"))
             throw new IllegalArgumentException("Invalid exchange ID: " + id);
@@ -25,6 +31,7 @@ public record ExchangeOffer(
         requires = List.copyOf(requires);
         if (requires.isEmpty()) throw new IllegalArgumentException("Exchange requires at least one cost: " + id);
         Objects.requireNonNull(reward, "reward");
+        Objects.requireNonNull(type, "type");
     }
 
     /**
@@ -37,7 +44,7 @@ public record ExchangeOffer(
     ) {
         if (section == null) throw new IllegalArgumentException("Exchange must be an object: " + id);
         for (String key : section.getKeys(false)) {
-            if (!Set.of("npc", "requires", "reward").contains(key))
+            if (!Set.of("npc", "requires", "reward", "type").contains(key))
                 throw new IllegalArgumentException("Unknown exchange key: " + id + "." + key);
         }
         UUID npc = groupNpc;
@@ -52,7 +59,18 @@ public record ExchangeOffer(
         }
         ConfigurationSection result = section.getConfigurationSection("reward");
         if (result == null) throw new IllegalArgumentException("Exchange requires a reward: " + id);
-        return new ExchangeOffer(id, npc, requires, amount(result.getValues(false), id + ".reward"));
+        ExchangeType type = groupNpc == null ? ExchangeType.TASK : ExchangeType.EXCHANGE;
+        if (section.contains("type")) {
+            Object configured = section.get("type");
+            if (!(configured instanceof String name))
+                throw new IllegalArgumentException("Expected exchange type at " + id + ".type");
+            try {
+                type = ExchangeType.valueOf(name.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("Unknown exchange type at " + id + ".type: " + name, exception);
+            }
+        }
+        return new ExchangeOffer(id, npc, requires, amount(result.getValues(false), id + ".reward"), type);
     }
 
     private static ItemAmount amount(Map<?, ?> values, String path) {

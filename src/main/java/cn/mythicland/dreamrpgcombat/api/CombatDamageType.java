@@ -6,8 +6,8 @@ import cn.mythicland.dreamrpgcombat.lore.CombatStat;
  * The damage channel, independent of whether a hit originates from a weapon or a skill.
  */
 public enum CombatDamageType {
-    PHYSICAL(CombatStat.PHYSICAL_DEFENSE, CombatStat.PHYSICAL_PENETRATION, CombatStat.PHYSICAL_PENETRATION_PERCENT),
-    MAGIC(CombatStat.MAGIC_DEFENSE, CombatStat.MAGIC_PENETRATION, CombatStat.MAGIC_PENETRATION_PERCENT),
+    PHYSICAL(CombatStat.PHYSICAL_DEFENSE, CombatStat.PENETRATION, CombatStat.PENETRATION_PERCENT),
+    MAGIC(CombatStat.MAGIC_DEFENSE, CombatStat.PENETRATION, CombatStat.PENETRATION_PERCENT),
     TRUE(null, null, null);
 
     private final CombatStat defense;
@@ -28,14 +28,14 @@ public enum CombatDamageType {
     }
 
     /**
-     * Returns the fixed penetration attribute used by this channel, or null for true damage.
+     * Returns the shared fixed penetration attribute, or null for true damage.
      */
     public CombatStat flatPenetration() {
         return flatPenetration;
     }
 
     /**
-     * Returns the percentage penetration attribute used by this channel, or null for true damage.
+     * Returns the shared penetration rate attribute, or null for true damage.
      */
     public CombatStat percentagePenetration() {
         return percentagePenetration;

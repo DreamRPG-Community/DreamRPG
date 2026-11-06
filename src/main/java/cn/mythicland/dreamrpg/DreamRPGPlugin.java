@@ -8,6 +8,7 @@ import cn.mythicland.dreamworld.DreamWorldPlugin;
 import cn.mythicland.dreamchest.DreamChestPlugin;
 import cn.mythicland.dreamnpc.DreamNPCPlugin;
 import cn.mythicland.dreamrpg.content.ContentController;
+import cn.mythicland.dreamrpg.title.TitleCatalog;
 import cn.mythicland.dreamlib.bootstrap.DreamLibManagedPlugin;
 import cn.mythicland.dreamrpgcombat.DreamRPGCombatLifecycle;
 import cn.mythicland.dreamrpgcombat.config.CombatSettings;
@@ -75,6 +76,7 @@ public final class DreamRPGPlugin extends DreamLibManagedPlugin {
     public java.util.List<ContentUpdate> prepareContent() {
         var updates = new java.util.ArrayList<ContentUpdate>();
         updates.add(bootstrap(COMPONENT_PACKAGE).resolve(CampaignCatalog.class).prepareContentReload());
+        updates.add(bootstrap(COMPONENT_PACKAGE).resolve(TitleCatalog.class).prepareContentReload());
         updates.add(bootstrap(COMPONENT_PACKAGE).resolve(WaypointCommand.class).prepareContentReload());
         updates.add(bootstrap(COMPONENT_PACKAGE).resolve(DreamRPGLifecycle.class).prepareContentReload());
         updates.addAll(((DreamWorldPlugin) getServer().getPluginManager().getPlugin("DreamWorld")).prepareContentReload());
